@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "HYDRA-UMC",
+  "name": "HYDRA-UMC-MTCONNECT-ADAPTER",
+  "version": "0.0.2",
+  "role": "api",
+  "stack": "node",
+  "technologies": [
+    "Node.js",
+    "Express",
+    "ANSI/MTC1.4 XML"
+  ],
+  "deployment_target": "cm5",
+  "maturity": "functional",
+  "family": "Industrial Gateway",
+  "parent": "HYDRA-UMC-GATEWAY-INDUSTRIAL",
+  "build": "npm install && npm run build.",
+  "notes": "Real MTConnect /probe and /current XML endpoints, spec-shape verified with real HTTP tests (supertest).",
+  "native_version": {
+    "file": "package.json",
+    "pattern": "\"version\":\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""
+  }
+}
