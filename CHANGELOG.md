@@ -21,6 +21,18 @@ semantic-versioning judgment calls:
 
 ---
 
+## Documentation - Real HTTP API reference
+
+- **`docs/API.md`** (new) - `GET /probe` and `GET /current` documented
+  from the actual `server.ts` code, including the full real XML envelope
+  each one returns and a clear callout of what's still a placeholder
+  (single hardcoded `HydraNode`, `Availability`/`Execution` not yet wired
+  to real robot state). Verified against the real test suite
+  (`tests/server.test.ts` - 4/4 passing). Documentation-only - no code
+  changed, no version bump.
+
+---
+
 ## [0.0.2] - Real HTTP test coverage
 
 - **`tests/server.test.ts`** - 4 real tests (via `supertest`, a real HTTP request over a real listening socket, not a hand-rolled call into the route handler) verifying `GET /probe` and `GET /current` return spec-shaped XML (correct namespaces, `Device`/`DataItem` ids matching between the two documents, a shared `instanceId`), plus a 404 check for an unknown path.
