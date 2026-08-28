@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC-MTCONNECT-ADAPTER",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "role": "api",
   "stack": "node",
   "technologies": [
@@ -11,11 +11,11 @@
     "ANSI/MTC1.4 XML"
   ],
   "deployment_target": "cm5",
-  "maturity": "functional",
+  "maturity": "established",
   "family": "Industrial Gateway",
   "parent": "HYDRA-UMC-GATEWAY-INDUSTRIAL",
   "build": "npm install && npm run build.",
-  "notes": "Real MTConnect /probe and /current XML endpoints, spec-shape verified with real HTTP tests (supertest).",
+  "notes": "Real MTConnect /probe and /current XML endpoints, spec-shape verified with real HTTP tests (supertest). Real, versioned DataItem mapping (unit conversion, quality, UTC timestamp, error code - src/units.ts/dataitem.ts) separated from reading a machine (src/reader.ts's polling-frequency-limited CachedReader), with real degraded-mode output (MTConnect's own UNAVAILABLE value) when a source is down or returns invalid data.",
   "native_version": {
     "file": "package.json",
     "pattern": "\"version\":\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""

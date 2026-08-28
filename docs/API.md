@@ -21,13 +21,14 @@ The static device model: which HydraNodes exist and what `DataItem`s each one ex
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <MTConnectDevices xmlns="urn:mtconnect.org:MTConnectDevices:1.7">
-  <Header creationTime="2026-01-01T00:00:00.000Z" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="1234567890" version="0.0.2" bufferSize="131072" nextSequence="1" firstSequence="1" lastSequence="1"/>
+  <Header creationTime="2026-01-01T00:00:00.000Z" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="1234567890" version="0.0.3" bufferSize="131072" nextSequence="1" firstSequence="1" lastSequence="1"/>
   <Devices>
     <Device id="hydra_umc_1" name="HydraNode_1" uuid="hydra-umc-node-1">
       <Description manufacturer="JuanenRac (Electro Hobby 3D)">HYDRA-UMC multi-robot micro-factory cell</Description>
       <DataItems>
         <DataItem id="execution" category="EVENT" type="EXECUTION"/>
         <DataItem id="avail" category="EVENT" type="AVAILABILITY"/>
+        <DataItem id="spindle_temp" category="SAMPLE" type="TEMPERATURE" units="DEGREE_CELSIUS" nativeUnits="FAHRENHEIT"/>
       </DataItems>
     </Device>
   </Devices>
@@ -40,14 +41,16 @@ The static device model: which HydraNodes exist and what `DataItem`s each one ex
 
 The latest value of every `DataItem` declared in `/probe`.
 
-**Currently a placeholder value, not live robot state**: `Availability` reflects this adapter process's own uptime (always `AVAILABLE` once it's running), and `Execution` is hardcoded to `READY` - neither is wired to a real HydraNode's actual execution/availability yet (same real-vs-placeholder split documented in `/probe` above).
+**`execution`/`avail` are still a placeholder value, not live robot state**: `Availability` reflects this adapter process's own uptime (always `AVAILABLE` once it's running), and `Execution` is hardcoded to `READY` - neither is wired to a real HydraNode's actual execution/availability yet (same real-vs-placeholder split documented in `/probe` above).
+
+**`spindle_temp` goes through a real pipeline**, even though its source is still a fixture (no real machine to poll yet - see `mejoras_futuras.txt`): [`src/reader.ts`](../src/reader.ts)'s `CachedReader` polls the configured `MachineReader` at most once every `minPollIntervalMs` (`POLL_INTERVAL_MS` env var, default `1000`), and [`src/dataitem.ts`](../src/dataitem.ts)'s `toDataItemReading()` converts the raw value's native unit to the MTConnect-standard one ([`src/units.ts`](../src/units.ts)), classifies its quality, and stamps a real UTC timestamp. A source that throws (down/unreachable) or returns an invalid value (`null`/`NaN`/an unconvertible unit) renders that DataItem as MTConnect's own real `UNAVAILABLE` value with a real `errorCode` attribute (`NO_DATA`, `UNIT_CONVERSION_ERROR`, or `SOURCE_UNAVAILABLE`) - a real degraded response, not a 500 and not stale data.
 
 **Response** - `200`, `Content-Type: application/xml`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">
-  <Header creationTime="2026-01-01T00:00:00.000Z" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="1234567890" version="0.0.2" bufferSize="131072" nextSequence="1" firstSequence="1" lastSequence="1"/>
+  <Header creationTime="2026-01-01T00:00:00.000Z" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="1234567890" version="0.0.3" bufferSize="131072" nextSequence="1" firstSequence="1" lastSequence="1"/>
   <Streams>
     <DeviceStream name="HydraNode_1" uuid="hydra-umc-node-1">
       <ComponentStream component="Device" name="HydraNode_1">
@@ -55,10 +58,19 @@ The latest value of every `DataItem` declared in `/probe`.
           <Execution dataItemId="execution" timestamp="2026-01-01T00:00:00.000Z" sequence="1">READY</Execution>
           <Availability dataItemId="avail" timestamp="2026-01-01T00:00:00.000Z" sequence="1">AVAILABLE</Availability>
         </Events>
+        <Samples>
+          <Temperature dataItemId="spindle_temp" timestamp="2026-01-01T00:00:00.000Z" sequence="1" units="DEGREE_CELSIUS">60</Temperature>
+        </Samples>
       </ComponentStream>
     </DeviceStream>
   </Streams>
 </MTConnectStreams>
+```
+
+A degraded `spindle_temp` (source down or invalid data) instead renders:
+
+```xml
+<Temperature dataItemId="spindle_temp" timestamp="2026-01-01T00:00:00.000Z" sequence="1" errorCode="SOURCE_UNAVAILABLE">UNAVAILABLE</Temperature>
 ```
 
 ---

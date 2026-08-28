@@ -33,6 +33,16 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.0.3] - Real, versioned DataItem mapping: units, quality, UTC, degraded mode
+
+- **`src/units.ts`** (new) - real, pure unit conversion (Fahrenheit->Celsius, radians/second->RPM, inches->millimeters) from a source's native unit to the MTConnect-standard one, testable without any hardware. Throws `UnitConversionError` for a native unit it doesn't know, rather than passing an unconverted number through under the wrong unit label.
+- **`src/dataitem.ts`** (new) - `toDataItemReading()`: the real, versioned mapping from a raw machine reading to an MTConnect DataItem - unit, quality (`GOOD`/`UNAVAILABLE`), a real UTC timestamp, and an `errorCode` (`NO_DATA`, `UNIT_CONVERSION_ERROR`) when the value isn't real/valid. A `null`/`NaN` value or an unconvertible unit renders MTConnect's own real `UNAVAILABLE` value, never a silently-wrong number or the literal string `"NaN"`.
+- **`src/reader.ts`** (new) - `CachedReader` wraps any `MachineReader` with a real minimum interval between actual reads (`minPollIntervalMs`/`POLL_INTERVAL_MS`), so a busy `/current` doesn't hammer an old controller. A real read failure clears the cache and throws `SourceUnavailableError` rather than serving arbitrarily stale data.
+- **`GET /current`** gained a real `<Samples>` block for a new `spindle_temp` DataItem, going through the full real pipeline above - source down or invalid renders it `UNAVAILABLE` with a `SOURCE_UNAVAILABLE` error code, a real degraded (still `200`) response, not a crash. `execution`/`avail` are untouched, still today's placeholder values.
+- **`buildApp(options)`** gained an optional `{ reader, minPollIntervalMs }` for tests - defaults to a real, honest `FixtureMachineReader` (no live HydraNode exists yet, same real-vs-placeholder split as `execution`/`avail`).
+- 27 new tests (`units.test.ts`, `dataitem.test.ts`, `reader.test.ts` - pure, hardware-free; `server-dataitems.test.ts` - real HTTP round trips with a fixture machine reporting mixed units, invalid data, and real downtime, confirming degraded MTConnect output and a correct UTC timestamp) = 31 total, all passing. Verified live beyond the test suite: built `dist/server.cjs`, ran it for real, and confirmed a real 140°F fixture reading rendered as exactly `60` `DEGREE_CELSIUS` in `/current`.
+- `.env.example` documents `POLL_INTERVAL_MS`; `docs/API.md` documents the new `<Samples>` block and degraded-mode shape.
+
 ## [0.0.2] - Real HTTP test coverage
 
 - **`tests/server.test.ts`** - 4 real tests (via `supertest`, a real HTTP request over a real listening socket, not a hand-rolled call into the route handler) verifying `GET /probe` and `GET /current` return spec-shaped XML (correct namespaces, `Device`/`DataItem` ids matching between the two documents, a shared `instanceId`), plus a 404 check for an unknown path.

@@ -27,6 +27,8 @@ Fornisce un'interfaccia XML/HTTP di sola lettura che consente ai software indust
 * 📄 **Flussi di dati XML:** Aggiornamenti periodici e basati su eventi in formato XML standard.
 * 🌐 **Interfaccia HTTP:** Accessibile tramite semplici query RESTful per una facile integrazione.
 * 🔍 **Compatibilità con gli agenti:** Funziona perfettamente con gli agenti e i collettori MTConnect esistenti.
+* 📐 **Mappatura reale unità/qualità:** L'unità nativa, la qualità, il timestamp UTC e il codice di errore di ogni DataItem sono calcolati da una mappatura reale e versionata - testabile senza hardware. *(implementato)*
+* 🩹 **Output in modalità degradata:** Una fonte non disponibile o che riporta dati non validi restituisce il valore reale `UNAVAILABLE` proprio di MTConnect con un codice di errore, non un crash né dati obsoleti. *(implementato)*
 
 ---
 
@@ -50,6 +52,9 @@ flowchart LR
 * **Perché il punto di ingresso stampa solo identità/versione, e termina dopo che un listener di health-check si avvia.** Fase di andamiaje, stesso motivo del README proprio del genitore - un vero adattatore è di lunga durata per natura.
 * **Come si inserisce nel resto dell'ecosistema.** Un servizio fratello sotto HYDRA-UMC-GATEWAY-INDUSTRIAL - traduce lo stato proprio di HYDRA-UMC-SERVER in un vero flusso device/agent MTConnect.
 * **Test HTTP reali, non solo un controllo di compilazione.** `tests/server.test.ts` usa `supertest` (una richiesta HTTP reale su un socket reale in ascolto) per verificare che `GET /probe` e `GET /current` restituiscano XML nella forma corretta dello spec, con namespace corrispondenti, id `Device`/`DataItem` coerenti tra i due documenti, e un `instanceId` condiviso.
+* **Perché la conversione di unità, la classificazione della qualità e la lettura di una macchina sono tre moduli separati.** `src/units.ts` (matematica di conversione pura), `src/dataitem.ts` (mappatura qualità/timestamp/codice di errore) e `src/reader.ts` (polling/caching di un `MachineReader`) sono ciascuno testabile separatamente, senza hardware né HTTP - la stessa preoccupazione dell'audit di promozione: i bug di conversione delle unità trovati tramite un round trip HTTP completo sono lenti da isolare e facili da perdere.
+* **Perché un DataItem degradato restituisce il valore reale `UNAVAILABLE` proprio di MTConnect, non una forma di errore personalizzata.** Gli Agent e i collettori MTConnect sanno già come mostrare `UNAVAILABLE` - riutilizzare il vocabolario stesso dello spec significa che uno strumento downstream reale si degrada in modo elegante già oggi, non solo dopo che gli viene insegnata una convenzione specifica di HYDRA-UMC. L'attributo `errorCode` (`NO_DATA`/`UNIT_CONVERSION_ERROR`/`SOURCE_UNAVAILABLE`) è la propria aggiunta v0 di questo progetto per una diagnosi reale, documentato come tale piuttosto che presentato come un attributo MTConnect standard.
+* **Perché il limite di polling di `CachedReader` è generico, non hardcoded su `spindle_temp`.** Nessuna fonte macchina reale esiste ancora in questo ambiente (vedi `mejoras_futuras.txt`), ma il rischio reale da cui si protegge - martellare di richieste un controller vecchio di decenni ogni volta che viene chiamato `/current` - si applica a qualunque fonte sostituirà eventualmente `FixtureMachineReader`, quindi il limite vive a livello dell'interfaccia `MachineReader`, non dentro la gestione propria di un singolo DataItem.
 
 ---
 

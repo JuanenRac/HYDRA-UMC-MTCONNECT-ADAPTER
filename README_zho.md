@@ -29,7 +29,8 @@
 * 🏭 **标准化机器数据：** 将 Hydra 机器人暴露为符合 MTConnect 标准的设备。
 * 📄 **XML 数据流：** 以标准 XML 格式进行周期性和事件驱动的更新。
 * 🌐 **HTTP 接口：** 可通过简单的 RESTful 查询访问，便于集成。
-* 🔍 **代理兼容性：** 与现有的 MTConnect Agent 和采集器无缝协作。
+* 📐 **真实的单位/质量映射：** 每个 DataItem 的原生单位、质量、UTC 时间戳和错误代码都由一个真实的、带版本管理的映射计算得出——无需硬件即可测试。*(已实现)*
+* 🩹 **降级模式输出：** 当数据源宕机或报告无效数据时，会渲染 MTConnect 自身真实的 `UNAVAILABLE` 值并附带错误代码，而不是崩溃或陈旧数据。*(已实现)*
 
 ---
 
@@ -52,7 +53,9 @@ flowchart LR
 * **为何是一个真实的 MTConnect 设备/代理流，而非通用的 XML 导出。** 支持 MTConnect 的工厂软件（许多 CNC/MES 工具）期望该标准所定义的特定设备/代理/组件模式——通用导出会需要在另一端使用自定义解析器，从而完全违背了使用 MTConnect 协议的初衷。
 * **为何入口点今天只打印身份/版本，在健康检查监听器启动后才退出。** 处于脚手架（scaffolding）阶段，与父项目自身 README 中的理由相同——一个真正的适配器本质上是长期运行的。
 * **这如何融入生态系统的其余部分。** 作为 HYDRA-UMC-GATEWAY-INDUSTRIAL 下的同级服务——将 HYDRA-UMC-SERVER 自身的状态转换为一个真实的 MTConnect 设备/代理数据流。
-* **真实的 HTTP 测试，而不仅仅是编译检查。** `tests/server.test.ts` 使用 `supertest`（在真实的监听套接字上发起真实的 HTTP 请求）验证 `GET /probe` 和 `GET /current` 返回符合规范格式的 XML——命名空间匹配、两份文档之间的 `Device`/`DataItem` id 一致，并共享同一个 `instanceId`。
+* **为何单位转换、质量分类和读取机器是三个独立的模块。** `src/units.ts`（纯转换数学运算）、`src/dataitem.ts`（质量/时间戳/错误代码映射）和 `src/reader.ts`（对 `MachineReader` 进行轮询/缓存）都可以单独测试，无需硬件或 HTTP——这正是晋级审计自身关注的问题：通过完整的 HTTP 往返发现的单位转换错误既难以定位又容易被忽略。
+* **为何降级的 DataItem 渲染 MTConnect 自身真实的 `UNAVAILABLE` 值，而非自定义的错误格式。** MTConnect Agent 和采集器早已知道如何显示 `UNAVAILABLE`——复用规范自身的词汇意味着真实的下游工具今天就能优雅降级，而不必等到它被教会一种 HYDRA-UMC 专属的约定。`errorCode` 属性（`NO_DATA`/`UNIT_CONVERSION_ERROR`/`SOURCE_UNAVAILABLE`）是本项目自身为实现真实诊断而添加的 v0 扩展，作为此类附加内容予以说明，而非当作标准 MTConnect 属性呈现。
+* **为何 `CachedReader` 的轮询限制是通用的，而非针对 `spindle_temp` 硬编码。** 目前该环境中还没有真实的机器数据源（参见 `mejoras_futuras.txt`），但它所防范的真实风险——每次访问 `/current` 都对一台使用了几十年的控制器发起请求轰炸——适用于未来最终取代 `FixtureMachineReader` 的任何数据源，因此这个节流机制存在于 `MachineReader` 接口层面，而不是存在于单个 DataItem 自身的处理逻辑中。
 
 ---
 

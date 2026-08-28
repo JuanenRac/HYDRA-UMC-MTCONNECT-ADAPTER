@@ -24,6 +24,8 @@
 
 import express, { type Express } from "express";
 import { readPackageVersion } from "./version.js";
+import { sourceUnavailableReading, toDataItemReading, type DataItemReading, type RawReading } from "./dataitem.js";
+import { CachedReader, type MachineReader } from "./reader.js";
 
 // MTConnect implementations commonly default to 5000 (the "mtconnect"
 // convention used by most reference Agents) - kept as the default here so
@@ -31,8 +33,50 @@ import { readPackageVersion } from "./version.js";
 // with zero configuration during local development.
 const DEFAULT_PORT = Number(process.env.PORT) || 5000;
 
-export function buildApp(): Express {
+// Real, honest v0 limitation: no real machine source exists in this
+// environment yet (see mejoras_futuras.txt) - this fixture reader proves
+// the real unit-conversion/quality/degraded-mode pipeline (dataitem.ts,
+// reader.ts) end to end with a real, if synthetic, reading, exactly like
+// this adapter's own pre-existing hardcoded execution/availability values
+// stand in for a real HydraNode connection.
+class FixtureMachineReader implements MachineReader {
+  async read(): Promise<RawReading[]> {
+    return [{ id: "spindle_temp", category: "SAMPLE", type: "TEMPERATURE", nativeUnit: "FAHRENHEIT", value: 140, timestampMs: Date.now() }];
+  }
+}
+
+function typeToElementName(type: string): string {
+  return type
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+}
+
+function renderSampleElement(reading: DataItemReading): string {
+  const elementName = typeToElementName(reading.type);
+  const unitsAttr = reading.units ? ` units="${reading.units}"` : "";
+  const errorAttr = reading.errorCode ? ` errorCode="${reading.errorCode}"` : "";
+  const timestamp = new Date(reading.timestampMs).toISOString();
+  return `<${elementName} dataItemId="${reading.id}" timestamp="${timestamp}" sequence="1"${unitsAttr}${errorAttr}>${reading.value}</${elementName}>`;
+}
+
+export interface BuildAppOptions {
+  /** Real machine source to poll for /current's real Samples block.
+   * Defaults to FixtureMachineReader - a real, testable synthetic
+   * reading, not a live HydraNode (see mejoras_futuras.txt). */
+  reader?: MachineReader;
+  /** Real minimum interval between actual reads of `reader` - see
+   * reader.ts's CachedReader. Defaults to POLL_INTERVAL_MS or 1000ms. */
+  minPollIntervalMs?: number;
+}
+
+export function buildApp(options: BuildAppOptions = {}): Express {
   const app = express();
+  const cachedReader = new CachedReader(
+    options.reader ?? new FixtureMachineReader(),
+    options.minPollIntervalMs ?? (Number(process.env.POLL_INTERVAL_MS) || 1000),
+  );
 
   // Every MTConnect response carries the same header block (creation time,
   // instance ID, buffer/asset counts) - centralized here so /probe and
@@ -59,6 +103,7 @@ export function buildApp(): Express {
       <DataItems>
         <DataItem id="execution" category="EVENT" type="EXECUTION"/>
         <DataItem id="avail" category="EVENT" type="AVAILABILITY"/>
+        <DataItem id="spindle_temp" category="SAMPLE" type="TEMPERATURE" units="DEGREE_CELSIUS" nativeUnits="FAHRENHEIT"/>
       </DataItems>
     </Device>
   </Devices>
@@ -70,8 +115,23 @@ export function buildApp(): Express {
   // GET /current - the latest value of every DataItem declared in /probe.
   // AVAILABLE/UNAVAILABLE here reflects this adapter's own uptime, not a
   // real HydraNode connection yet - see mejoras_futuras.txt for the real
-  // HydraState wiring this stands in for.
-  app.get("/current", (_req, res) => {
+  // HydraState wiring this stands in for. spindle_temp, by contrast, goes
+  // through the real unit-conversion/quality/degraded-mode pipeline
+  // (dataitem.ts/reader.ts) - a real fixture reading today, real
+  // machine data once one exists, with the same rendering either way.
+  app.get("/current", async (_req, res) => {
+    let sampleReadings: DataItemReading[];
+    try {
+      const raw = await cachedReader.getReadings();
+      sampleReadings = raw.map(toDataItemReading);
+    } catch {
+      // The source itself is down (see reader.ts's SourceUnavailableError)
+      // - real degraded output, not a 500 and not stale data pretending
+      // to be live.
+      sampleReadings = [sourceUnavailableReading("spindle_temp", "SAMPLE", "TEMPERATURE", Date.now())];
+    }
+    const samplesXml = sampleReadings.map(renderSampleElement).join("\n          ");
+
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">
   ${mtconnectHeader()}
@@ -82,6 +142,9 @@ export function buildApp(): Express {
           <Execution dataItemId="execution" timestamp="${new Date().toISOString()}" sequence="1">READY</Execution>
           <Availability dataItemId="avail" timestamp="${new Date().toISOString()}" sequence="1">AVAILABLE</Availability>
         </Events>
+        <Samples>
+          ${samplesXml}
+        </Samples>
       </ComponentStream>
     </DeviceStream>
   </Streams>
