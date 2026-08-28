@@ -6,7 +6,7 @@
   "description": "Standardized MTConnect (ANSI/MTC1.4) XML/HTTP interface exposing the HYDRA-UMC robot swarm as monitorable machine tools.",
   "scripts": {
     "dev": "tsx src/server.ts",
-    "build": "node scripts/bump-version.mjs && esbuild src/server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "esbuild src/server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
