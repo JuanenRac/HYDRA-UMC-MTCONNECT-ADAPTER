@@ -54,6 +54,13 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.0.5] - Real ecosystem live-status opt-in
+
+- **`hydra-umc.project.json`** declares its real `service.port` (5000)
+  and `health_path` (`/probe`) - HYDRA-UMC-SERVER's ecosystem status
+  endpoint now does a real HTTP GET against it (expecting 2xx) instead
+  of only reporting static manifest metadata.
+
 ## [0.0.4]
 
 - Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
