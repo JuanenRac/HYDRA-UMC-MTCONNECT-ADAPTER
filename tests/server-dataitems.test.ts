@@ -72,6 +72,23 @@ describe("GET /current - real Samples pipeline (fixture machine, mixed units)", 
   });
 });
 
+describe("GET /current - real XML escaping (fixed after a live bug audit)", () => {
+  it("escapes XML-special characters in a device-reported value instead of corrupting the document", async () => {
+    // No nativeUnit - toDataItemReading() passes a string value straight
+    // through as GOOD (the real "string EVENT value like READY" path its
+    // own doc comment describes), exactly the shape a real alarm/status
+    // message from live hardware would take.
+    const reader = readerOf([{ id: "spindle_temp", category: "SAMPLE", type: "TEMPERATURE", value: `<injected>&"'`, timestampMs: 1_700_000_000_000 }]);
+    const res = await request(buildApp({ reader })).get("/current");
+    expect(res.status).toBe(200);
+    // The raw special characters must never appear unescaped in the body -
+    // that's exactly what would corrupt the XML / allow injection.
+    expect(res.text).not.toContain(`<injected>`);
+    expect(res.text).not.toContain(`&"'`);
+    expect(res.text).toContain("&lt;injected&gt;&amp;&quot;&apos;");
+  });
+});
+
 describe("GET /current - real polling-frequency cache", () => {
   it("does not re-read the source on every request within minPollIntervalMs", async () => {
     let calls = 0;

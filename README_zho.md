@@ -55,7 +55,7 @@ flowchart LR
 * **这如何融入生态系统的其余部分。** 作为 HYDRA-UMC-GATEWAY-INDUSTRIAL 下的同级服务——将 HYDRA-UMC-SERVER 自身的状态转换为一个真实的 MTConnect 设备/代理数据流。
 * **为何单位转换、质量分类和读取机器是三个独立的模块。** `src/units.ts`（纯转换数学运算）、`src/dataitem.ts`（质量/时间戳/错误代码映射）和 `src/reader.ts`（对 `MachineReader` 进行轮询/缓存）都可以单独测试，无需硬件或 HTTP——这正是晋级审计自身关注的问题：通过完整的 HTTP 往返发现的单位转换错误既难以定位又容易被忽略。
 * **为何降级的 DataItem 渲染 MTConnect 自身真实的 `UNAVAILABLE` 值，而非自定义的错误格式。** MTConnect Agent 和采集器早已知道如何显示 `UNAVAILABLE`——复用规范自身的词汇意味着真实的下游工具今天就能优雅降级，而不必等到它被教会一种 HYDRA-UMC 专属的约定。`errorCode` 属性（`NO_DATA`/`UNIT_CONVERSION_ERROR`/`SOURCE_UNAVAILABLE`）是本项目自身为实现真实诊断而添加的 v0 扩展，作为此类附加内容予以说明，而非当作标准 MTConnect 属性呈现。
-* **为何 `CachedReader` 的轮询限制是通用的，而非针对 `spindle_temp` 硬编码。** 目前该环境中还没有真实的机器数据源（参见 `mejoras_futuras.txt`），但它所防范的真实风险——每次访问 `/current` 都对一台使用了几十年的控制器发起请求轰炸——适用于未来最终取代 `FixtureMachineReader` 的任何数据源，因此这个节流机制存在于 `MachineReader` 接口层面，而不是存在于单个 DataItem 自身的处理逻辑中。
+* **为何 `CachedReader` 的轮询限制是通用的，而非针对 `spindle_temp` 硬编码。** 目前该环境中还没有真实的机器数据源，但它所防范的真实风险——每次访问 `/current` 都对一台使用了几十年的控制器发起请求轰炸——适用于未来最终取代 `FixtureMachineReader` 的任何数据源，因此这个节流机制存在于 `MachineReader` 接口层面，而不是存在于单个 DataItem 自身的处理逻辑中。
 
 ---
 

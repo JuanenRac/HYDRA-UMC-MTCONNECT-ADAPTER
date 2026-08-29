@@ -14,7 +14,7 @@ Both endpoints share one `Header` block (`creationTime`, `instanceId`, `bufferSi
 
 ## `GET /probe`
 
-The static device model: which HydraNodes exist and what `DataItem`s each one exposes. **Currently hardcoded to exactly one HydraNode** (`hydra_umc_1`) - a real deployment would generate this from the live robot roster via HYDRA-UMC-SERVER's own `/api/hydra-info` (see `mejoras_futuras.txt`); this placeholder proves the HTTP surface and XML shape are spec-correct end to end.
+The static device model: which HydraNodes exist and what `DataItem`s each one exposes. **Currently hardcoded to exactly one HydraNode** (`hydra_umc_1`) - a real deployment would generate this from the live robot roster via HYDRA-UMC-SERVER's own `/api/hydra-info`; this placeholder proves the HTTP surface and XML shape are spec-correct end to end.
 
 **Response** - `200`, `Content-Type: application/xml`:
 
@@ -43,7 +43,7 @@ The latest value of every `DataItem` declared in `/probe`.
 
 **`execution`/`avail` are still a placeholder value, not live robot state**: `Availability` reflects this adapter process's own uptime (always `AVAILABLE` once it's running), and `Execution` is hardcoded to `READY` - neither is wired to a real HydraNode's actual execution/availability yet (same real-vs-placeholder split documented in `/probe` above).
 
-**`spindle_temp` goes through a real pipeline**, even though its source is still a fixture (no real machine to poll yet - see `mejoras_futuras.txt`): [`src/reader.ts`](../src/reader.ts)'s `CachedReader` polls the configured `MachineReader` at most once every `minPollIntervalMs` (`POLL_INTERVAL_MS` env var, default `1000`), and [`src/dataitem.ts`](../src/dataitem.ts)'s `toDataItemReading()` converts the raw value's native unit to the MTConnect-standard one ([`src/units.ts`](../src/units.ts)), classifies its quality, and stamps a real UTC timestamp. A source that throws (down/unreachable) or returns an invalid value (`null`/`NaN`/an unconvertible unit) renders that DataItem as MTConnect's own real `UNAVAILABLE` value with a real `errorCode` attribute (`NO_DATA`, `UNIT_CONVERSION_ERROR`, or `SOURCE_UNAVAILABLE`) - a real degraded response, not a 500 and not stale data.
+**`spindle_temp` goes through a real pipeline**, even though its source is still a fixture (no real machine to poll yet): [`src/reader.ts`](../src/reader.ts)'s `CachedReader` polls the configured `MachineReader` at most once every `minPollIntervalMs` (`POLL_INTERVAL_MS` env var, default `1000`), and [`src/dataitem.ts`](../src/dataitem.ts)'s `toDataItemReading()` converts the raw value's native unit to the MTConnect-standard one ([`src/units.ts`](../src/units.ts)), classifies its quality, and stamps a real UTC timestamp. A source that throws (down/unreachable) or returns an invalid value (`null`/`NaN`/an unconvertible unit) renders that DataItem as MTConnect's own real `UNAVAILABLE` value with a real `errorCode` attribute (`NO_DATA`, `UNIT_CONVERSION_ERROR`, or `SOURCE_UNAVAILABLE`) - a real degraded response, not a 500 and not stale data.
 
 **Response** - `200`, `Content-Type: application/xml`:
 

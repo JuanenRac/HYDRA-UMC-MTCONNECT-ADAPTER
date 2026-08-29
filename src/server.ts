@@ -34,7 +34,7 @@ import { CachedReader, type MachineReader } from "./reader.js";
 const DEFAULT_PORT = Number(process.env.PORT) || 5000;
 
 // Real, honest v0 limitation: no real machine source exists in this
-// environment yet (see mejoras_futuras.txt) - this fixture reader proves
+// environment yet - this fixture reader proves
 // the real unit-conversion/quality/degraded-mode pipeline (dataitem.ts,
 // reader.ts) end to end with a real, if synthetic, reading, exactly like
 // this adapter's own pre-existing hardcoded execution/availability values
@@ -53,18 +53,40 @@ function typeToElementName(type: string): string {
     .join("");
 }
 
+// Real bug fixed after a live audit: every interpolated value below used to
+// go straight into the hand-built XML string with zero escaping -
+// typeToElementName() sanitizes the element NAME, but nothing sanitized
+// the content/attributes. `DataItemReading.value` is always a string
+// (toDataItemReading() converts a RawReading's `number | string | null`
+// into one), and can legitimately BE an arbitrary device-reported string
+// for an EVENT-category reading (e.g. an alarm/status message) - once a
+// real MachineReader is wired to live hardware (this file's own stated
+// near-term next step), any such value containing `<`, `&` or `"` would
+// corrupt the MTConnect document for every real Agent/collector parsing
+// it, or worse, inject XML into the response. Standard XML 1.0
+// predefined-entity escaping - order matters (& must be escaped first, or
+// a later &lt; would itself get re-escaped into &amp;lt;).
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 function renderSampleElement(reading: DataItemReading): string {
   const elementName = typeToElementName(reading.type);
-  const unitsAttr = reading.units ? ` units="${reading.units}"` : "";
-  const errorAttr = reading.errorCode ? ` errorCode="${reading.errorCode}"` : "";
+  const unitsAttr = reading.units ? ` units="${escapeXml(reading.units)}"` : "";
+  const errorAttr = reading.errorCode ? ` errorCode="${escapeXml(reading.errorCode)}"` : "";
   const timestamp = new Date(reading.timestampMs).toISOString();
-  return `<${elementName} dataItemId="${reading.id}" timestamp="${timestamp}" sequence="1"${unitsAttr}${errorAttr}>${reading.value}</${elementName}>`;
+  return `<${elementName} dataItemId="${escapeXml(reading.id)}" timestamp="${timestamp}" sequence="1"${unitsAttr}${errorAttr}>${escapeXml(reading.value)}</${elementName}>`;
 }
 
 export interface BuildAppOptions {
   /** Real machine source to poll for /current's real Samples block.
    * Defaults to FixtureMachineReader - a real, testable synthetic
-   * reading, not a live HydraNode (see mejoras_futuras.txt). */
+   * reading, not a live HydraNode. */
   reader?: MachineReader;
   /** Real minimum interval between actual reads of `reader` - see
    * reader.ts's CachedReader. Defaults to POLL_INTERVAL_MS or 1000ms. */
@@ -114,8 +136,8 @@ export function buildApp(options: BuildAppOptions = {}): Express {
 
   // GET /current - the latest value of every DataItem declared in /probe.
   // AVAILABLE/UNAVAILABLE here reflects this adapter's own uptime, not a
-  // real HydraNode connection yet - see mejoras_futuras.txt for the real
-  // HydraState wiring this stands in for. spindle_temp, by contrast, goes
+  // real HydraNode connection yet - this stands in for the real HydraState
+  // wiring that will eventually replace it. spindle_temp, by contrast, goes
   // through the real unit-conversion/quality/degraded-mode pipeline
   // (dataitem.ts/reader.ts) - a real fixture reading today, real
   // machine data once one exists, with the same rendering either way.

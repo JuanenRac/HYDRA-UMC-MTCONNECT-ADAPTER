@@ -5,9 +5,9 @@
 //
 // Real polling-frequency limit and cache in front of a MachineReader - the
 // promotion audit's own "limitar frecuencia de polling y cache para no
-// sobrecargar equipos antiguos". A real source (once one exists - see
-// mejoras_futuras.txt) may be a slow, decades-old controller that cannot
-// take a fresh read on every single HTTP /current request; this wrapper
+// sobrecargar equipos antiguos". A real source (once one exists) may be a
+// slow, decades-old controller that cannot take a fresh read on every
+// single HTTP /current request; this wrapper
 // is generic over any MachineReader, so it's testable today with a real
 // fixture/fake one, without needing that hardware to exist yet.
 // =============================================================================

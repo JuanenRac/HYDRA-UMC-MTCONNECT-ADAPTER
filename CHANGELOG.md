@@ -21,6 +21,27 @@ semantic-versioning judgment calls:
 
 ---
 
+## Security - Real XML escaping on GET /current
+
+- **`src/server.ts`** - fixed a real XML injection/corruption bug found in
+  a live ecosystem bug audit: every value interpolated into the
+  hand-built `/current` XML (a DataItem's `id`, `units`, `errorCode`, and
+  its own reading value) went straight into the string with zero
+  escaping. A device-reported value containing `<`, `&`, `"` or `'`
+  (a real, legitimate shape for an EVENT-category string reading, e.g. an
+  alarm/status message) would corrupt the MTConnect document for every
+  real Agent/collector parsing it, or inject XML into the response. Added
+  a proper `escapeXml()` helper (the 5 XML 1.0 predefined entities, `&`
+  escaped first) and applied it at all four interpolation points.
+  Covered by a new real HTTP regression test in
+  `tests/server-dataitems.test.ts` asserting a raw
+  `<injected>&"'` reading value is rendered fully escaped and never
+  appears unescaped in the response body.
+- Removed a handful of source-comment/doc references to a private,
+  unpublished internal notes file that should never have been cited from
+  public source - no functional change, just an accurate, self-contained
+  set of comments and docs.
+
 ## Documentation - Real HTTP API reference
 
 - **`docs/API.md`** (new) - `GET /probe` and `GET /current` documented
@@ -32,6 +53,10 @@ semantic-versioning judgment calls:
   changed, no version bump.
 
 ---
+
+## [0.0.4]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
 
 ## [0.0.3] - Real, versioned DataItem mapping: units, quality, UTC, degraded mode
 
