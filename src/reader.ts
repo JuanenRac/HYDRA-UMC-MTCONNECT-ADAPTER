@@ -44,7 +44,11 @@ export class CachedReader {
     private readonly reader: MachineReader,
     private readonly minPollIntervalMs: number,
     private readonly now: () => number = Date.now,
-  ) {}
+  ) {
+    if (!Number.isFinite(minPollIntervalMs) || minPollIntervalMs < 0) {
+      throw new RangeError("minPollIntervalMs must be a finite non-negative number");
+    }
+  }
 
   async getReadings(): Promise<RawReading[]> {
     const nowMs = this.now();

@@ -7,10 +7,11 @@ omits calendar dates.
 
 ## Versioning scheme
 
-`scripts/bump-version.mjs` bumps `package.json`'s `version` field
-automatically as the first step of every real `npm run build` (same
-mechanism HYDRA-UMC-SERVER/HYDRA-UMC-STUDIO already use) - no manual
-version edits, no build that silently ships under the previous number.
+`bump_manifest_version.py` (root of the workspace) is the single owner
+of both `hydra-umc.project.json` and `package.json`'s `version` field -
+`npm run build` is deliberately compilation-only so it can never create
+drift between them. `scripts/bump-version.mjs` is a legacy native-only
+helper kept for reference; nothing in this repo calls it.
 
 It follows the ecosystem-wide base-10 "odometer" rule rather than
 semantic-versioning judgment calls:
@@ -53,6 +54,16 @@ semantic-versioning judgment calls:
   changed, no version bump.
 
 ---
+
+## [0.0.6] - Reject negative and non-finite polling intervals
+
+- **`CachedReader`** - rejected negative and non-finite `minPollIntervalMs`
+  instead of accepting a configuration that could repeatedly poll a legacy
+  controller. Also fixed this CHANGELOG's own stale "Versioning scheme"
+  section, which claimed `scripts/bump-version.mjs` wires into `npm run
+  build` - it never has; that script is a legacy helper nothing calls,
+  and `bump_manifest_version.py` alone owns the version.
+- 33/33 tests passing.
 
 ## [0.0.5] - Real ecosystem live-status opt-in
 

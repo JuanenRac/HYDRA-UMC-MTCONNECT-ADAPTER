@@ -26,6 +26,13 @@ function reading(value: number): RawReading[] {
 }
 
 describe("CachedReader - real polling-frequency limit", () => {
+  it("rejects a negative or non-finite interval instead of silently hammering a source", () => {
+    const inner = new CountingReader(async () => reading(1));
+    for (const interval of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => new CachedReader(inner, interval)).toThrow(RangeError);
+    }
+  });
+
   it("serves the cache instead of re-reading within minPollIntervalMs", async () => {
     let clock = 0;
     const inner = new CountingReader(async () => reading(1));
