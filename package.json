@@ -1,7 +1,7 @@
 {
   "name": "hydra-umc-mtconnect-adapter",
   "private": true,
-  "version": "0.0.6",
+  "version": "0.0.7",
   "type": "module",
   "description": "Standardized MTConnect (ANSI/MTC1.4) XML/HTTP interface exposing the HYDRA-UMC robot swarm as monitorable machine tools.",
   "scripts": {
