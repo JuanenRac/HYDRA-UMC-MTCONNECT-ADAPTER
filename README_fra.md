@@ -63,10 +63,12 @@ flowchart LR
 ```text
 HYDRA-UMC-MTCONNECT-ADAPTER/
 ├── src/         # Code source (Node/TypeScript - Adaptateur, Mappeur, HTTP)
+├── tests/       # Suite Vitest - mappage des data items, unités, comportement du reader et du serveur
 ├── docs/        # Documentation et guides de configuration
 ├── build/       # Sortie compilée (npm run build)
 ├── images/      # Médias et diagrammes
 ├── scripts/     # Scripts utilitaires (bump-version.mjs)
+├── tools/       # ci_validate.py - validation manifest/CHANGELOG/docs utilisée par la CI
 └── README.md
 ```
 
