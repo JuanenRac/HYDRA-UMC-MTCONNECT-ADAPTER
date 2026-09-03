@@ -26,10 +26,10 @@
 监控每个 HydraNode 的执行状态、工具位置和传感器数据。
 
 ### 关键特性：
-* 🏭 **标准化机器数据：** 将 Hydra 机器人暴露为符合 MTConnect 标准的设备。
-* 📄 **XML 数据流：** 以标准 XML 格式进行周期性和事件驱动的更新。
-* 🌐 **HTTP 接口：** 可通过简单的 RESTful 查询访问，便于集成。
-* 🔍 **代理兼容性：** 与现有的 MTConnect 代理和采集器无缝协作。
+* 🏭 **标准化机器数据：** 将一个 HydraNode 暴露为符合 MTConnect 标准的设备。*（目前固定为恰好一个 HydraNode——`hydra_umc_1`，详见 `docs/API.md`；这证明了 HTTP 接口与 XML 形态端到端符合规范——真实部署会从 HYDRA-UMC-SERVER 自身的实时机器人列表生成这一部分）*
+* 📄 **XML 数据流：** `GET /current` 中真实的、经轮询得到的 `<Samples>` 块，采用标准 XML 格式。*(已实现)*
+* 🌐 **HTTP 接口：** 可通过简单的 RESTful 查询访问，便于集成。*(已实现)*
+* 🔍 **代理兼容性：** 已验证会输出符合规范形态的 XML（正确的命名空间、一致的 `Device`/`DataItem` id、共享的 `instanceId`——见 `tests/server.test.ts`）——尚未针对真实的第三方 MTConnect 代理/采集器进行实测。
 * 📐 **真实的单位/质量映射：** 每个 DataItem 的原生单位、质量、UTC 时间戳和错误代码都由一个真实的、带版本管理的映射计算得出——无需硬件即可测试。*(已实现)*
 * 🩹 **降级模式输出：** 当数据源宕机或报告无效数据时，会渲染 MTConnect 自身真实的 `UNAVAILABLE` 值并附带错误代码，而不是崩溃或陈旧数据。*(已实现)*
 
@@ -218,6 +218,7 @@ npm start
 
 ## 📚 文档与社区
 
+- **[docs/API.md](docs/API.md)** —— 真实的 HTTP 端点参考文档：`GET /probe`/`GET /current` 的请求/响应形态、完整的 XML 报文示例，以及对仍属占位实现部分的明确说明（唯一固定的 HydraNode、尚未接入真实机器人状态的 `Availability`/`Execution`）。
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** —— 提交 Pull Request 所需的技术栈和编码规范。
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— 本社区所期望的行为准则。
 - **[SECURITY.md](SECURITY.md)** —— 如何报告漏洞，以及本项目真实的安全关注重点。

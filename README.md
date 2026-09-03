@@ -23,10 +23,10 @@
 It provides a read-only XML/HTTP interface that allows traditional industrial software to monitor the execution state, tool positions, and sensor data of every HydraNode without needing specialized drivers.
 
 ### Key Features:
-* 🏭 **Standardized Machine Data:** Exposes Hydra robots as MTConnect-compliant devices.
-* 📄 **XML Data Streams:** Periodic and event-driven updates in standard XML format.
-* 🌐 **HTTP Interface:** Accessible via simple RESTful queries for easy integration.
-* 🔍 **Agent Compatibility:** Works seamlessly with existing MTConnect Agents and collectors.
+* 🏭 **Standardized Machine Data:** Exposes a HydraNode as an MTConnect-compliant device. *(currently hardcoded to exactly one HydraNode - `hydra_umc_1` - see `docs/API.md`; proves the HTTP surface and XML shape are spec-correct end to end, a real deployment would generate this from HYDRA-UMC-SERVER's own live robot roster)*
+* 📄 **XML Data Streams:** `GET /current`'s real, polled `<Samples>` block in standard XML format. *(implemented)*
+* 🌐 **HTTP Interface:** Accessible via simple RESTful queries for easy integration. *(implemented)*
+* 🔍 **Agent Compatibility:** Verified to emit spec-shaped XML (correct namespaces, consistent `Device`/`DataItem` ids, a shared `instanceId` - see `tests/server.test.ts`) - not yet tested live against a real third-party MTConnect Agent/collector.
 * 📐 **Real Unit/Quality Mapping:** Every DataItem's native unit, quality, UTC timestamp and error code are computed by a real, versioned mapping - testable without hardware. *(implemented)*
 * 🩹 **Degraded-Mode Output:** A source that's down or reports invalid data renders MTConnect's own real `UNAVAILABLE` value with an error code, not a crash or stale data. *(implemented)*
 
@@ -215,6 +215,7 @@ This project is part of the HYDRA-UMC robotics ecosystem by the same author (Jua
 
 ## 📚 Documentation & Community
 
+- **[docs/API.md](docs/API.md)** — the real HTTP endpoint reference: `GET /probe`/`GET /current` request/response shape, full example XML envelopes, and an explicit callout of what's still a placeholder (the single hardcoded HydraNode, `Availability`/`Execution` not yet wired to live robot state).
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — tech stack and coding guidelines for a pull request.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — the standards of behavior expected in this community.
 - **[SECURITY.md](SECURITY.md)** — how to report a vulnerability, and this project's own real security focus areas.

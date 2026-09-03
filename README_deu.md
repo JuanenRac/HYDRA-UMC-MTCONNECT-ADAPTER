@@ -23,10 +23,10 @@
 Er bietet eine schreibgeschützte XML/HTTP-Schnittstelle, die es herkömmlicher Industriesoftware ermöglicht, den Ausführungsstatus, die Werkzeugpositionen und die Sensordaten jedes HydraNodes zu überwachen, ohne dass spezialisierte Treiber erforderlich sind.
 
 ### Hauptmerkmale:
-* 🏭 **Standardisierte Maschinendaten:** Exportiert Hydra-Roboter als MTConnect-konforme Geräte.
-* 📄 **XML-Datenströme:** Periodische und ereignisgesteuerte Updates im Standard-XML-Format.
-* 🌐 **HTTP-Schnittstelle:** Über einfache RESTful-Abfragen für eine einfache Integration zugänglich.
-* 🔍 **Agent-Kompatibilität:** Arbeitet nahtlos mit vorhandenen MTConnect-Agenten und -Kollektoren zusammen.
+* 🏭 **Standardisierte Maschinendaten:** Exportiert einen HydraNode als MTConnect-konformes Gerät. *(heute fest auf genau einen HydraNode - `hydra_umc_1` - beschränkt, siehe `docs/API.md`; belegt, dass die HTTP-Oberfläche und die XML-Form Ende-zu-Ende spezifikationskonform sind - ein echtes Deployment würde dies aus HYDRA-UMC-SERVERs eigener Live-Roboterliste generieren)*
+* 📄 **XML-Datenströme:** Der echte, gepollte `<Samples>`-Block von `GET /current` im Standard-XML-Format. *(implementiert)*
+* 🌐 **HTTP-Schnittstelle:** Über einfache RESTful-Abfragen für eine einfache Integration zugänglich. *(implementiert)*
+* 🔍 **Agent-Kompatibilität:** Verifiziert, dass spezifikationskonformes XML ausgegeben wird (korrekte Namespaces, konsistente `Device`/`DataItem`-IDs, eine gemeinsame `instanceId` - siehe `tests/server.test.ts`) - noch nicht live gegen einen echten Drittanbieter-MTConnect-Agenten/-Kollektor getestet.
 * 📐 **Echtes Einheiten-/Qualitäts-Mapping:** Die native Einheit, Qualität, der UTC-Zeitstempel und der Fehlercode jedes DataItems werden von einem echten, versionierten Mapping berechnet - testbar ohne Hardware. *(implementiert)*
 * 🩹 **Ausgabe im Degraded-Modus:** Eine Quelle, die ausgefallen ist oder ungültige Daten meldet, gibt MTConnects eigenen echten `UNAVAILABLE`-Wert mit einem Fehlercode aus, statt eines Absturzes oder veralteter Daten. *(implementiert)*
 
@@ -216,6 +216,7 @@ Dieses Projekt ist Teil des HYDRA-UMC-Robotik-Ökosystems desselben Autors (Juan
 
 ## 📚 Dokumentation & Community
 
+- **[docs/API.md](docs/API.md)** — die echte HTTP-Endpunkt-Referenz: die Anfrage-/Antwortform von `GET /probe`/`GET /current`, vollständige Beispiel-XML-Umschläge, und ein expliziter Hinweis darauf, was noch ein Platzhalter ist (der einzige feste HydraNode, `Availability`/`Execution` noch nicht mit echtem Roboterzustand verbunden).
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — Technologie-Stack und Coding-Richtlinien für einen Pull Request.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — die in dieser Community erwarteten Verhaltensstandards.
 - **[SECURITY.md](SECURITY.md)** — wie man eine Schwachstelle meldet, und die echten Sicherheitsschwerpunkte dieses Projekts.
