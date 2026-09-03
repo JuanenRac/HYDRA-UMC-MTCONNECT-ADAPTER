@@ -40,7 +40,7 @@
 ```mermaid
 flowchart LR
     HYDRA["HYDRA-SERVER"] --> ADAP["MTCONNECT-ADAPTER"]
-    ADAP --> XML["XML / SHDR Stream"]
+    ADAP --> XML["XML / HTTP Stream"]
     XML --> AGENT["MTCONNECT-AGENT"]
     AGENT --> HTTP["HTTP GET /current"]
     HTTP --> MONITOR["Industrial Monitor / ERP"]
@@ -67,7 +67,8 @@ flowchart LR
 HYDRA-UMC-MTCONNECT-ADAPTER/
 ├── src/         # 源代码（Node/TypeScript —— 适配器、映射器、HTTP）
 ├── tests/       # Vitest 测试套件——data item 映射、单位、reader 与服务器行为
-├── docs/        # 文档与设置指南
+├── docs/
+│   └── API.md   # 真实的 HTTP 端点参考（请求、响应、XML 结构）
 ├── build/       # 编译输出（npm run build）
 ├── images/      # 媒体与图表
 ├── scripts/     # 实用脚本（bump-version.mjs）
@@ -76,7 +77,8 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 ```
 
 纯网络服务，没有自己专属的硬件——`hardware/`、`firmware/` 和 `os/`
-已根据仓库结构策略从项目模板中省略。
+已根据仓库结构策略从项目模板中省略。完整的 HTTP 端点参考见
+[`docs/API.md`](docs/API.md)。
 
 ---
 

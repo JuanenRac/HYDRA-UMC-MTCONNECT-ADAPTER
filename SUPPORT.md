@@ -11,7 +11,7 @@ For industrial licensing, MTConnect mapping consulting, or specific technical bl
 Email: `electrohobby3d@gmail.com`
 
 ## 🐛 Bug Reports
-If you found a real error in the SHDR implementation or XML mapping, please open a **GitHub Issue** in this repository. 
+If you found a real error in the HTTP/XML implementation (`GET /probe`/`GET /current`) or the DataItem mapping, please open a **GitHub Issue** in this repository. 
 *Please search existing issues before opening a new one.*
 
 ## ❌ What is NOT support?

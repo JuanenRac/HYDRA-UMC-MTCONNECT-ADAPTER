@@ -21,7 +21,7 @@ The static device model: which HydraNodes exist and what `DataItem`s each one ex
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <MTConnectDevices xmlns="urn:mtconnect.org:MTConnectDevices:1.7">
-  <Header creationTime="2026-01-01T00:00:00.000Z" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="1234567890" version="0.0.3" bufferSize="131072" nextSequence="1" firstSequence="1" lastSequence="1"/>
+  <Header creationTime="1970-01-01T00:00:00.000Z" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="1234567890" version="0.0.7" bufferSize="131072" nextSequence="1" firstSequence="1" lastSequence="1"/>
   <Devices>
     <Device id="hydra_umc_1" name="HydraNode_1" uuid="hydra-umc-node-1">
       <Description manufacturer="JuanenRac (Electro Hobby 3D)">HYDRA-UMC multi-robot micro-factory cell</Description>
@@ -50,16 +50,16 @@ The latest value of every `DataItem` declared in `/probe`.
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">
-  <Header creationTime="2026-01-01T00:00:00.000Z" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="1234567890" version="0.0.3" bufferSize="131072" nextSequence="1" firstSequence="1" lastSequence="1"/>
+  <Header creationTime="1970-01-01T00:00:00.000Z" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="1234567890" version="0.0.7" bufferSize="131072" nextSequence="1" firstSequence="1" lastSequence="1"/>
   <Streams>
     <DeviceStream name="HydraNode_1" uuid="hydra-umc-node-1">
       <ComponentStream component="Device" name="HydraNode_1">
         <Events>
-          <Execution dataItemId="execution" timestamp="2026-01-01T00:00:00.000Z" sequence="1">READY</Execution>
-          <Availability dataItemId="avail" timestamp="2026-01-01T00:00:00.000Z" sequence="1">AVAILABLE</Availability>
+          <Execution dataItemId="execution" timestamp="1970-01-01T00:00:00.000Z" sequence="1">READY</Execution>
+          <Availability dataItemId="avail" timestamp="1970-01-01T00:00:00.000Z" sequence="1">AVAILABLE</Availability>
         </Events>
         <Samples>
-          <Temperature dataItemId="spindle_temp" timestamp="2026-01-01T00:00:00.000Z" sequence="1" units="DEGREE_CELSIUS">60</Temperature>
+          <Temperature dataItemId="spindle_temp" timestamp="1970-01-01T00:00:00.000Z" sequence="1" units="DEGREE_CELSIUS">60</Temperature>
         </Samples>
       </ComponentStream>
     </DeviceStream>
@@ -70,7 +70,7 @@ The latest value of every `DataItem` declared in `/probe`.
 A degraded `spindle_temp` (source down or invalid data) instead renders:
 
 ```xml
-<Temperature dataItemId="spindle_temp" timestamp="2026-01-01T00:00:00.000Z" sequence="1" errorCode="SOURCE_UNAVAILABLE">UNAVAILABLE</Temperature>
+<Temperature dataItemId="spindle_temp" timestamp="1970-01-01T00:00:00.000Z" sequence="1" errorCode="SOURCE_UNAVAILABLE">UNAVAILABLE</Temperature>
 ```
 
 ---

@@ -41,7 +41,7 @@
 ```mermaid
 flowchart LR
     HYDRA["HYDRA-SERVER"] --> ADAP["MTCONNECT-ADAPTER"]
-    ADAP --> XML["XML / SHDR Stream"]
+    ADAP --> XML["XML / HTTP Stream"]
     XML --> AGENT["MTCONNECT-AGENT"]
     AGENT --> HTTP["HTTP GET /current"]
     HTTP --> MONITOR["Industrial Monitor / ERP"]
@@ -68,7 +68,8 @@ flowchart LR
 HYDRA-UMC-MTCONNECT-ADAPTER/
 ├── src/         # ソースコード（Node/TypeScript —— アダプター、マッパー、HTTP）
 ├── tests/       # Vitest スイート —— data item マッピング、単位、reader/サーバーの動作
-├── docs/        # ドキュメントとセットアップガイド
+├── docs/
+│   └── API.md   # 本物の HTTP エンドポイントリファレンス（リクエスト、レスポンス、XML 構造）
 ├── build/       # コンパイル出力（npm run build）
 ├── images/      # メディアと図表
 ├── scripts/     # ユーティリティスクリプト（bump-version.mjs）
@@ -78,7 +79,8 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 
 純粋なネットワークサービスであり、独自の専用ハードウェアを持ちません
 ——`hardware/`、`firmware/`、`os/` は元のプロジェクトテンプレートから
-省略されており、リポジトリ構造ポリシーに従っています。
+省略されており、リポジトリ構造ポリシーに従っています。完全な HTTP
+エンドポイントリファレンスは [`docs/API.md`](docs/API.md) を参照。
 
 ---
 

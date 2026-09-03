@@ -37,7 +37,7 @@ It provides a read-only XML/HTTP interface that allows traditional industrial so
 ```mermaid
 flowchart LR
     HYDRA["HYDRA-SERVER"] --> ADAP["MTCONNECT-ADAPTER"]
-    ADAP --> XML["XML / SHDR Stream"]
+    ADAP --> XML["XML / HTTP Stream"]
     XML --> AGENT["MTCONNECT-AGENT"]
     AGENT --> HTTP["HTTP GET /current"]
     HTTP --> MONITOR["Industrial Monitor / ERP"]
@@ -64,7 +64,8 @@ flowchart LR
 HYDRA-UMC-MTCONNECT-ADAPTER/
 ├── src/         # Source code (Node/TypeScript - Adapter, Mapper, HTTP)
 ├── tests/       # Vitest suite - data-item mapping, units, reader, and server behavior
-├── docs/        # Documentation and setup guides
+├── docs/
+│   └── API.md   # Real HTTP endpoint reference (requests, responses, XML shape)
 ├── build/       # Compiled output (npm run build)
 ├── images/      # Media and diagrams
 ├── scripts/     # Utility scripts (bump-version.mjs)
@@ -74,6 +75,7 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 
 Pure network service, no dedicated hardware of its own - `hardware/`,
 `firmware/` and `os/` are omitted under the repository structure policy.
+See [`docs/API.md`](docs/API.md) for the full HTTP endpoint reference.
 
 ---
 

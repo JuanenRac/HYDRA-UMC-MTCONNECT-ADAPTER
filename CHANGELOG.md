@@ -22,6 +22,29 @@ semantic-versioning judgment calls:
 
 ---
 
+## Documentation - Linked docs/API.md, fixed stale example values and CONTRIBUTING.md
+
+- **README (all 7 languages)** - `docs/API.md` was never actually linked from any
+  README despite existing since the "Real HTTP API reference" entry below; added
+  it to the directory-structure tree and a real, translated sentence pointing to
+  it, in all 7 languages.
+- **`docs/API.md`** - its example `Header`/`DataItem` timestamps were hardcoded
+  to a stray real-looking calendar date; replaced with the conventional
+  non-dated placeholder (the Unix epoch, `1970-01-01T00:00:00.000Z`) - real
+  output uses `new Date().toISOString()` at request time, never a fixed value. Its
+  example `version="0.0.3"` attribute was also stale (several releases behind);
+  updated to the current real version, verified live against a running instance
+  of this adapter (`GET /probe`/`GET /current` over a real HTTP request).
+- **`CONTRIBUTING.md`** - corrected three real inaccuracies: claimed this adapter
+  speaks MTConnect "over SHDR" (it doesn't - `src/server.ts` implements the
+  `GET /probe`/`GET /current` HTTP/XML surface directly, no SHDR anywhere in the
+  codebase); referenced a `schemas/` directory and a `scripts/validate_xml.py`
+  tool that do not exist in this repo; listed "Python 3.12" as a language even
+  though `src/` is 100% TypeScript (the repo's few `.py` files are ecosystem-wide
+  tooling, not part of the adapter itself). Testing guidance now points at the
+  real Vitest suite instead of a nonexistent script.
+  Documentation-only - no code changed, no version bump.
+
 ## Security - Real XML escaping on GET /current
 
 - **`src/server.ts`** - fixed a real XML injection/corruption bug found in

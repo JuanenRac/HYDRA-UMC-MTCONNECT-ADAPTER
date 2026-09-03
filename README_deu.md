@@ -37,7 +37,7 @@ Er bietet eine schreibgeschützte XML/HTTP-Schnittstelle, die es herkömmlicher 
 ```mermaid
 flowchart LR
     HYDRA["HYDRA-SERVER"] --> ADAP["MTCONNECT-ADAPTER"]
-    ADAP --> XML["XML / SHDR Stream"]
+    ADAP --> XML["XML / HTTP Stream"]
     XML --> AGENT["MTCONNECT-AGENT"]
     AGENT --> HTTP["HTTP GET /current"]
     HTTP --> MONITOR["Industrie-Monitor / ERP"]
@@ -64,7 +64,8 @@ flowchart LR
 HYDRA-UMC-MTCONNECT-ADAPTER/
 ├── src/         # Quellcode (Node/TypeScript - Adapter, Mapper, HTTP)
 ├── tests/       # Vitest-Suite - Data-Item-Mapping, Einheiten, Reader- und Server-Verhalten
-├── docs/        # Dokumentation und Einrichtungsleitfäden
+├── docs/
+│   └── API.md   # Echte HTTP-Endpoint-Referenz (Requests, Responses, XML-Form)
 ├── build/       # Kompilierte Ausgabe (npm run build)
 ├── images/      # Medien und Diagramme
 ├── scripts/     # Utility-Skripte (bump-version.mjs)
@@ -74,6 +75,7 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 
 Reiner Netzwerkdienst ohne eigene Hardware - `hardware/`, `firmware/` und
 `os/` werden gemäß der Repository-Strukturpolitik ausgelassen.
+Siehe [`docs/API.md`](docs/API.md) für die vollständige HTTP-Endpoint-Referenz.
 
 ---
 
