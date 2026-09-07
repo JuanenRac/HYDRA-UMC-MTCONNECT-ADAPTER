@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "HYDRA-UMC",
+  "name": "HYDRA-UMC-MTCONNECT-ADAPTER",
+  "version": "0.0.8",
+  "role": "api",
+  "stack": "node",
+  "technologies": [
+    "Node.js",
+    "Express",
+    "ANSI/MTC1.4 XML"
+  ],
+  "deployment_target": "cm5",
+  "maturity": "established",
+  "family": "Industrial Gateway",
+  "parent": "HYDRA-UMC-GATEWAY-INDUSTRIAL",
+  "build": "npm install && npm run build.",
+  "notes": "Real MTConnect /probe and /current XML endpoints, spec-shape verified with real HTTP tests (supertest). Real, versioned DataItem mapping (unit conversion, quality, UTC timestamp, error code - src/units.ts/dataitem.ts) separated from reading a machine (src/reader.ts's polling-frequency-limited CachedReader), with real degraded-mode output (MTConnect's own UNAVAILABLE value) when a source is down or returns invalid data. src/hydraServerReader.ts (HYDRA_UMC_SERVER_URL) is a real, non-fixture MachineReader polling a live HYDRA-UMC-SERVER's own GET /api/settings for one real robot's own AVAILABILITY/EXECUTION - closing a real gap where FixtureMachineReader was the only reader that ever existed, and Execution/Availability were hardcoded XML literals regardless of which reader was configured. Verified live against a real running HYDRA-UMC-SERVER instance, not just unit tests.",
+  "native_version": {
+    "file": "package.json",
+    "pattern": "\"version\":\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""
+  },
+  "service": {
+    "port": 5000,
+    "health_path": "/probe"
+  }
+}
