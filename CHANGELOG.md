@@ -45,8 +45,8 @@ semantic-versioning judgment calls:
 
 ## Security - Real XML escaping on GET /current
 
-- **`src/server.ts`** - fixed a real XML injection/corruption bug found in
-  a live ecosystem bug audit: every value interpolated into the
+- **`src/server.ts`** - fixed a real XML injection/corruption bug found
+  while auditing the code: every value interpolated into the
   hand-built `/current` XML (a DataItem's `id`, `units`, `errorCode`, and
   its own reading value) went straight into the string with zero
   escaping. A device-reported value containing `<`, `&`, `"` or `'`
@@ -78,7 +78,7 @@ semantic-versioning judgment calls:
 
 ## [0.0.8] - A real MachineReader, not just FixtureMachineReader forever
 
-- Found in an ecosystem-wide software-improvements audit: this repo's
+- Found while auditing the code: this repo's
   only `MachineReader` was ever `FixtureMachineReader` - a fixed
   synthetic reading, unconditionally, with no real machine source
   wired in anywhere. A related, deeper bug found in the same pass:
