@@ -5,7 +5,7 @@
 //
 // Pure unit tests of the real raw-reading -> DataItemReading mapping -
 // quality, units, UTC timestamps and error codes, all testable without
-// hardware or a running adapter (the promotion audit's own requirement).
+// hardware or a running adapter (the review's own requirement).
 // =============================================================================
 
 import { describe, expect, it } from "vitest";

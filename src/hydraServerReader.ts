@@ -3,7 +3,7 @@
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 // GPL-3.0 - see LICENSE
 //
-// Found in an ecosystem-wide software-improvements audit: server.ts's own
+// Found while auditing the code: server.ts's own
 // buildApp() defaulted to FixtureMachineReader unconditionally - there was
 // no real MachineReader anywhere in this repo, even though the one real
 // machine source this adapter can actually reach today already exists:

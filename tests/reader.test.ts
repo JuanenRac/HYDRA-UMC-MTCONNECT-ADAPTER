@@ -5,7 +5,7 @@
 //
 // Real polling-frequency-limit and cache behavior against a real (if
 // fake) MachineReader - no actual hardware, but real timing/caching logic
-// under real test, per the promotion audit's own request.
+// under real test, per the review's own request.
 // =============================================================================
 
 import { describe, expect, it } from "vitest";

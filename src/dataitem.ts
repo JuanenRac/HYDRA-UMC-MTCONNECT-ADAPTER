@@ -5,7 +5,7 @@
 //
 // Real, versioned mapping from a raw machine reading to an MTConnect
 // DataItem value: unit conversion, quality, UTC timestamp, and an error
-// code when the value isn't real/valid - the promotion audit's own list
+// code when the value isn't real/valid - the review's own list
 // ("unidad, tipo, calidad, timestamp, codigo de error y comportamiento
 // cuando el origen no responde"). Deliberately separate from XML
 // rendering (src/server.ts) and from reading a real machine (src/reader.ts)

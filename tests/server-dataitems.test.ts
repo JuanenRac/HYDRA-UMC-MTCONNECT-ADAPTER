@@ -5,7 +5,7 @@
 //
 // Real HTTP tests (supertest, over a real listening socket) of the new
 // unit-conversion/quality/degraded-mode pipeline wired into GET /current -
-// this is the promotion audit's own "Evidencia": a fixture machine with
+// this is the review's own "Evidencia": a fixture machine with
 // mixed units, invalid data, and downtime, checking real degraded
 // MTConnect output and correct UTC.
 // =============================================================================
