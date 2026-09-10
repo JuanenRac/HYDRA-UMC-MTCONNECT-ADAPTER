@@ -6,7 +6,7 @@
 // Real unit conversion from whatever native unit a source machine reports
 // in to the MTConnect-standard unit its DataItem declares - a pure
 // function, testable without any hardware or a running adapter. This is
-// what the promotion audit specifically asks for: "conversiones de unidad
+// what the diagnosis notes specifically ask for: "conversiones de unidad
 // se prueben sin hardware", not embedded inline in XML-building code where
 // it can only be exercised through a real HTTP round trip.
 // =============================================================================

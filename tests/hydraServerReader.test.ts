@@ -7,7 +7,7 @@
 // HYDRA-UMC-SERVER's own GET /api/settings (same real shape
 // HYDRA-UMC-TOOL-CLI's own robots.go and server_test.go already expect),
 // and a real HydraServerMachineReader making a real fetch() against it -
-// not a mocked reader or a hand-built RawReading. Closes the audit
+// not a mocked reader or a hand-built RawReading. Closes the
 // finding that this repo's only MachineReader was ever the fixture one.
 // =============================================================================
 

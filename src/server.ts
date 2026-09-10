@@ -54,7 +54,7 @@ class FixtureMachineReader implements MachineReader {
   }
 }
 
-// Real gap found in an ecosystem-wide software-improvements audit: this
+// Real gap found while auditing the code: this
 // was always FixtureMachineReader, unconditionally - there was no real
 // MachineReader anywhere in this repo, even though a real source
 // (HYDRA-UMC-SERVER's own GET /api/settings) already exists and is
@@ -82,7 +82,7 @@ function typeToElementName(type: string): string {
     .join("");
 }
 
-// Real bug fixed after a live audit: every interpolated value below used to
+// Real bug fixed while auditing the code: every interpolated value below used to
 // go straight into the hand-built XML string with zero escaping -
 // typeToElementName() sanitizes the element NAME, but nothing sanitized
 // the content/attributes. `DataItemReading.value` is always a string
@@ -165,7 +165,7 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   });
 
   // GET /current - the latest value of every DataItem declared in /probe.
-  // Real gap closed in the same audit pass as buildReader() above:
+  // Real gap closed in the same review pass as buildReader() above:
   // Execution/Availability used to be hardcoded literals here,
   // unconditionally - wiring in a real reader would have changed nothing
   // about this response. All three DataItems now render from the SAME

@@ -4,7 +4,7 @@
 // GPL-3.0 - see LICENSE
 //
 // Real polling-frequency limit and cache in front of a MachineReader - the
-// promotion audit's own "limitar frecuencia de polling y cache para no
+// review's own "limitar frecuencia de polling y cache para no
 // sobrecargar equipos antiguos". A real source (once one exists) may be a
 // slow, decades-old controller that cannot take a fresh read on every
 // single HTTP /current request; this wrapper
