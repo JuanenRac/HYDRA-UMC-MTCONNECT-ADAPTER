@@ -76,6 +76,18 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.0.9] - Honesty check section in every README
+
+Added a "Honesty check" paragraph right after the badges in `README.md`
+and all 6 translated READMEs, naming the real, tested modules
+(`src/units.ts`, `src/dataitem.ts`, `src/reader.ts`,
+`src/hydraServerReader.ts`, `src/server.ts`) and the real test count
+(45 passing across 6 files). States plainly that the device model is
+hardcoded to exactly one HydraNode, and that the emitted XML has only
+been verified for spec-correct shape - never yet tested live against a
+real third-party MTConnect Agent or collector. Documents the real,
+current state of what's implemented vs. planned; no behavior changed.
+
 ## [0.0.8] - A real MachineReader, not just FixtureMachineReader forever
 
 - Found while auditing the code: this repo's

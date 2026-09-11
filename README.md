@@ -16,6 +16,10 @@
 
 ---
 
+**Honesty check - what actually runs today:** unit conversion (`src/units.ts`), quality/timestamp/error-code mapping (`src/dataitem.ts`), polling/caching (`src/reader.ts`), the real HYDRA-UMC-SERVER-backed machine reader (`src/hydraServerReader.ts`), and the HTTP server (`src/server.ts`) are all real and tested (45 tests passing across 6 files, including real HTTP requests over a real listening socket via `supertest` - not just a compile check). The device model is hardcoded to exactly one HydraNode (`hydra_umc_1`) - it proves the HTTP surface and XML shape are spec-correct end to end, but a real deployment monitoring more than one robot would need to generate this from HYDRA-UMC-SERVER's own live roster, which doesn't happen yet. The emitted XML has been verified for spec-correct shape (namespaces, `Device`/`DataItem` ids, a shared `instanceId`) but has not yet been tested live against a real third-party MTConnect Agent or collector. See `CHANGELOG.md` for exactly what has shipped so far.
+
+---
+
 ## 1. 🛠️ TECHNICAL OVERVIEW
 
 **HYDRA-UMC-MTCONNECT-ADAPTER** is the legacy and factory-standard bridge for machine tool monitoring. It implements the MTConnect protocol (ANSI/MTC1.4), exposing the robotic swarm as a set of standardized machine tools.

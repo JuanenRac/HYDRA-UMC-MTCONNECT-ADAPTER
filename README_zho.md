@@ -16,6 +16,10 @@
 
 ---
 
+**诚实核查 - 今天真正能运行的部分：** 单位换算(`src/units.ts`)、质量/时间戳/错误码映射(`src/dataitem.ts`)、轮询/缓存(`src/reader.ts`)、由真实 HYDRA-UMC-SERVER 支持的机器读取器(`src/hydraServerReader.ts`)，以及 HTTP 服务器(`src/server.ts`)都是真实的并经过测试(6 个文件共 45 个测试通过，其中包括通过 `supertest` 对一个真实监听套接字发出的真实 HTTP 请求——而不仅仅是编译检查)。设备模型被硬编码为恰好一个 HydraNode(`hydra_umc_1`)——这证明了 HTTP 接口和 XML 结构从端到端都符合规范，但一个真正监控多台机器人的部署需要根据 HYDRA-UMC-SERVER 自身的实时机器人列表来生成，而这一点目前尚未实现。所输出的 XML 已经过验证，结构符合规范(命名空间、`Device`/`DataItem` id、共享的 `instanceId`),但尚未针对真实的第三方 MTConnect Agent 或采集器进行过实际联调测试。具体已交付的内容请见 `CHANGELOG.md`。
+
+---
+
 ## 1. 🛠️ 技术概述
 
 **HYDRA-UMC-MTCONNECT-ADAPTER** 是用于机床监控的传统及工厂标准桥接
