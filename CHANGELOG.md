@@ -76,6 +76,20 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.1] - H021: concurrent reads could race, letting a slower-but-earlier read overwrite a fresher one
+
+`CachedReader.getReadings()` checked the cache-expiry condition, then
+`await`ed `this.reader.read()` - two concurrent callers that both saw the
+cache as expired each started their own independent real read. Whichever
+resolved LAST won the `cachedReadings`/`lastReadAtMs`/`sequence` write,
+even if it was the one that started EARLIER (real network/device jitter
+routinely reorders completion vs. start order) - overwriting a fresher
+result a second, later-started read had already written, and defeating
+`minPollIntervalMs`'s whole point (never more than one real read in
+flight) via the race itself. Fixed: concurrent callers now share one
+`inFlight` promise instead of each starting their own read. 2 new
+regression tests (57/57 total).
+
 ## [0.1.0] - I43: real sequence numbers, and a new GET /sample honoring MTConnect's own OUT_OF_RANGE contract
 
 `sequence` on every DataItem, and `nextSequence`/`firstSequence`/`lastSequence`

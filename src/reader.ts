@@ -39,6 +39,15 @@ export class SourceUnavailableError extends Error {
 export class CachedReader {
   private cachedReadings: RawReading[] | null = null;
   private lastReadAtMs = -Infinity;
+  // H021: without this, two concurrent getReadings() calls that both see
+  // the cache as expired would each start their own independent
+  // this.reader.read() - the one that started EARLIER but resolves LATER
+  // (real network/device jitter) would then overwrite a fresher result a
+  // second, later-started read already wrote, and minPollIntervalMs's
+  // whole point (never more than one real read in flight) would itself
+  // be defeated by the race. Every concurrent caller instead awaits this
+  // exact same in-flight read.
+  private inFlight: Promise<RawReading[]> | null = null;
   // I43: a real, honest MTConnect-style sequence number - starts at 0
   // ("no real observation has ever succeeded yet"), incremented by
   // exactly 1 for each real, distinct batch of readings this reader
@@ -72,15 +81,23 @@ export class CachedReader {
     if (this.cachedReadings !== null && nowMs - this.lastReadAtMs < this.minPollIntervalMs) {
       return this.cachedReadings;
     }
-    try {
-      const readings = await this.reader.read();
-      this.cachedReadings = readings;
-      this.lastReadAtMs = nowMs;
-      this._sequence += 1;
-      return readings;
-    } catch (err) {
-      this.cachedReadings = null;
-      throw new SourceUnavailableError(err);
+    if (this.inFlight !== null) {
+      return this.inFlight;
     }
+    this.inFlight = (async () => {
+      try {
+        const readings = await this.reader.read();
+        this.cachedReadings = readings;
+        this.lastReadAtMs = nowMs;
+        this._sequence += 1;
+        return readings;
+      } catch (err) {
+        this.cachedReadings = null;
+        throw new SourceUnavailableError(err);
+      } finally {
+        this.inFlight = null;
+      }
+    })();
+    return this.inFlight;
   }
 }
