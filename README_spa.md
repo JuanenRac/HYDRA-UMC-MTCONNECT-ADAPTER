@@ -112,8 +112,9 @@ npm start
 
 El adaptador escucha en `0.0.0.0:5000` - cualquier Agente/colector
 MTConnect puede consultar `GET http://<host>:5000/probe` (modelo estático
-de dispositivo) y `GET http://<host>:5000/current` (últimos valores de
-DataItem).
+de dispositivo), `GET http://<host>:5000/current` (últimos valores de
+DataItem) y `GET http://<host>:5000/sample?from=<sequence>` (semántica
+real y honesta de buffer de streaming - ver `docs/API.md`).
 
 ### Versionado
 Cada `npm run build` real incrementa automáticamente el `version` de
@@ -225,7 +226,7 @@ Este proyecto es parte del ecosistema de robótica HYDRA-UMC del mismo autor (Ju
 
 ## 📚 Documentación y Comunidad
 
-- **[docs/API.md](docs/API.md)** — la referencia real de los endpoints HTTP: la forma de petición/respuesta de `GET /probe`/`GET /current`, ejemplos completos de sobres XML, las dos implementaciones reales de `MachineReader` (`FixtureMachineReader`/`HydraServerMachineReader`), y una nota explícita de lo que todavía es un placeholder (el único HydraNode fijo - el árbol dinámico de un Device por robot es trabajo aparte y más amplio).
+- **[docs/API.md](docs/API.md)** — la referencia real de los endpoints HTTP: la forma de petición/respuesta de `GET /probe`/`GET /current`/`GET /sample`, ejemplos completos de sobres XML, las dos implementaciones reales de `MachineReader` (`FixtureMachineReader`/`HydraServerMachineReader`), y una nota explícita de lo que todavía es un placeholder (el único HydraNode fijo - el árbol dinámico de un Device por robot es trabajo aparte y más amplio).
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — stack tecnológico y pautas de codificación para un pull request.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — los estándares de comportamiento esperados en esta comunidad.
 - **[SECURITY.md](SECURITY.md)** — cómo reportar una vulnerabilidad, y las áreas reales de enfoque en seguridad de este proyecto.

@@ -111,8 +111,10 @@ npm start
 ```
 
 Der Adapter lauscht auf `0.0.0.0:5000` - jeder MTConnect-Agent/Collector
-kann `GET http://<host>:5000/probe` (statisches Gerätemodell) und
-`GET http://<host>:5000/current` (aktuelle DataItem-Werte) abfragen.
+kann `GET http://<host>:5000/probe` (statisches Gerätemodell),
+`GET http://<host>:5000/current` (aktuelle DataItem-Werte) und
+`GET http://<host>:5000/sample?from=<sequence>` (echte, ehrliche
+Streaming-Puffer-Semantik - siehe `docs/API.md`) abfragen.
 
 ### Versionierung
 Jeder echte `npm run build` erhöht automatisch die `version` in
@@ -225,7 +227,7 @@ Dieses Projekt ist Teil des HYDRA-UMC-Robotik-Ökosystems desselben Autors (Juan
 
 ## 📚 Dokumentation & Community
 
-- **[docs/API.md](docs/API.md)** — die echte HTTP-Endpunkt-Referenz: die Anfrage-/Antwortform von `GET /probe`/`GET /current`, vollständige Beispiel-XML-Umschläge, die beiden echten `MachineReader`-Implementierungen (`FixtureMachineReader`/`HydraServerMachineReader`), und ein expliziter Hinweis darauf, was noch ein Platzhalter ist (der einzige feste HydraNode - der dynamische Baum mit einem Gerät pro Roboter ist separate, größere Arbeit).
+- **[docs/API.md](docs/API.md)** — die echte HTTP-Endpunkt-Referenz: die Anfrage-/Antwortform von `GET /probe`/`GET /current`/`GET /sample`, vollständige Beispiel-XML-Umschläge, die beiden echten `MachineReader`-Implementierungen (`FixtureMachineReader`/`HydraServerMachineReader`), und ein expliziter Hinweis darauf, was noch ein Platzhalter ist (der einzige feste HydraNode - der dynamische Baum mit einem Gerät pro Roboter ist separate, größere Arbeit).
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — Technologie-Stack und Coding-Richtlinien für einen Pull Request.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — die in dieser Community erwarteten Verhaltensstandards.
 - **[SECURITY.md](SECURITY.md)** — wie man eine Schwachstelle meldet, und die echten Sicherheitsschwerpunkte dieses Projekts.

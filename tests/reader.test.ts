@@ -73,6 +73,44 @@ describe("CachedReader - real polling-frequency limit", () => {
   });
 });
 
+describe("CachedReader - real sequence tracking (I43)", () => {
+  it("starts at 0 before any real read has ever succeeded", () => {
+    const cached = new CachedReader(new CountingReader(async () => reading(1)), 1000);
+    expect(cached.sequence).toBe(0);
+  });
+
+  it("advances by exactly 1 for each real, distinct read - never on a cache hit", async () => {
+    let clock = 0;
+    const inner = new CountingReader(async () => reading(1));
+    const cached = new CachedReader(inner, 1000, () => clock);
+
+    await cached.getReadings();
+    expect(cached.sequence).toBe(1);
+
+    clock += 500; // still within the cache window
+    await cached.getReadings();
+    expect(cached.sequence).toBe(1); // a cache hit must never advance the real sequence
+
+    clock += 1000; // past the window - a real new read
+    await cached.getReadings();
+    expect(cached.sequence).toBe(2);
+  });
+
+  it("does not advance on a failed read - a source outage is not a new real observation", async () => {
+    let clock = 0;
+    const inner: MachineReader = {
+      read: async () => {
+        throw new Error("connection refused");
+      },
+    };
+    const cached = new CachedReader(inner, 1000, () => clock);
+
+    await expect(cached.getReadings()).rejects.toBeInstanceOf(SourceUnavailableError);
+
+    expect(cached.sequence).toBe(0);
+  });
+});
+
 describe("CachedReader - real source-down handling", () => {
   it("throws SourceUnavailableError when the underlying reader fails, instead of serving stale data", async () => {
     let clock = 0;
