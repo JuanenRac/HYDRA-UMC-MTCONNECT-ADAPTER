@@ -114,8 +114,9 @@ npm start
 ```
 
 适配器监听 `0.0.0.0:5000`——任何 MTConnect Agent/采集器都可以查询
-`GET http://<host>:5000/probe`（静态设备模型）和
-`GET http://<host>:5000/current`（最新的 DataItem 值）。
+`GET http://<host>:5000/probe`（静态设备模型）、
+`GET http://<host>:5000/current`（最新的 DataItem 值），以及
+`GET http://<host>:5000/sample?from=<sequence>`（真实、诚实的流式缓冲区语义——见 `docs/API.md`）。
 
 ### 版本管理
 每次真实的 `npm run build` 都会自动递增 `package.json` 自身的
@@ -227,7 +228,7 @@ npm start
 
 ## 📚 文档与社区
 
-- **[docs/API.md](docs/API.md)** —— 真实的 HTTP 端点参考文档：`GET /probe`/`GET /current` 的请求/响应形态、完整的 XML 报文示例、两种真实的 `MachineReader` 实现(`FixtureMachineReader`/`HydraServerMachineReader`),以及对仍属占位实现部分的明确说明(唯一固定的 HydraNode——按机器人划分的动态设备树是另一项更大的独立工作)。
+- **[docs/API.md](docs/API.md)** —— 真实的 HTTP 端点参考文档：`GET /probe`/`GET /current`/`GET /sample` 的请求/响应形态、完整的 XML 报文示例、两种真实的 `MachineReader` 实现(`FixtureMachineReader`/`HydraServerMachineReader`),以及对仍属占位实现部分的明确说明(唯一固定的 HydraNode——按机器人划分的动态设备树是另一项更大的独立工作)。
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** —— 提交 Pull Request 所需的技术栈和编码规范。
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— 本社区所期望的行为准则。
 - **[SECURITY.md](SECURITY.md)** —— 如何报告漏洞，以及本项目真实的安全关注重点。

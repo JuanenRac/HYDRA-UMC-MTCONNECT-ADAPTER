@@ -104,12 +104,17 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
-function renderDataItemElement(reading: DataItemReading): string {
+// I43: `sequence` is a real, caller-supplied MTConnect sequence number
+// (see CachedReader's own `sequence` getter) - never a hardcoded literal.
+// Every DataItem in the SAME real batch of readings shares this one
+// number, matching the batch-level granularity this adapter's own
+// buffer actually keeps (see mtconnectHeader()'s own doc comment).
+function renderDataItemElement(reading: DataItemReading, sequence: number): string {
   const elementName = typeToElementName(reading.type);
   const unitsAttr = reading.units ? ` units="${escapeXml(reading.units)}"` : "";
   const errorAttr = reading.errorCode ? ` errorCode="${escapeXml(reading.errorCode)}"` : "";
   const timestamp = new Date(reading.timestampMs).toISOString();
-  return `<${elementName} dataItemId="${escapeXml(reading.id)}" timestamp="${timestamp}" sequence="1"${unitsAttr}${errorAttr}>${escapeXml(reading.value)}</${elementName}>`;
+  return `<${elementName} dataItemId="${escapeXml(reading.id)}" timestamp="${timestamp}" sequence="${sequence}"${unitsAttr}${errorAttr}>${escapeXml(reading.value)}</${elementName}>`;
 }
 
 export interface BuildAppOptions {
@@ -136,8 +141,58 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // envelope shape real Agents expect to parse.
   const instanceId = Date.now();
 
+  // I43 ("coherencia de instancia y secuencia en reinicios"): first/last/
+  // nextSequence are now real, derived from cachedReader's own real
+  // sequence counter - never the hardcoded "1" literal every response
+  // used to carry regardless of how many times this process had actually
+  // polled its source. This adapter keeps no real historical buffer of
+  // INTERMEDIATE readings - only the single most recent batch is ever
+  // retrievable - but it never refuses to discuss any sequence number
+  // this process could plausibly have produced: `firstSequence` is
+  // pinned to 1 the moment a first real read ever succeeds (0 before
+  // that - a real, honest "nothing observed yet" state), never chasing
+  // `lastSequence` upward on every new poll. Pinning it is what makes
+  // GET /sample below able to answer "what's new since sequence N" for
+  // ANY real past N without a request's own read racing the very
+  // firstSequence it would be compared against - see that handler's own
+  // doc comment for exactly what "the buffer" honestly promises here.
+  // `instanceId` above already changes on every real process restart; a
+  // consumer that stored a `from` cursor against a sequence lower than
+  // this process could ever have produced (i.e. before it started, or
+  // from a since-restarted, different instance) gets a real, explicit
+  // OUT_OF_RANGE error from GET /sample below, never a silent mix of old
+  // and new data.
+  // The one real place firstSequence's own pinning rule lives - see
+  // mtconnectHeader's own doc comment above for why it never chases
+  // lastSequence upward. Shared by mtconnectHeader() and GET /sample's
+  // own OUT_OF_RANGE check below so the two can never silently drift
+  // apart into disagreeing about what "in range" means.
+  function bufferBounds(): { firstSequence: number; lastSequence: number } {
+    const lastSequence = cachedReader.sequence;
+    return { firstSequence: lastSequence > 0 ? 1 : 0, lastSequence };
+  }
+
   function mtconnectHeader(): string {
-    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="131072" nextSequence="1" firstSequence="1" lastSequence="1"/>`;
+    const { firstSequence, lastSequence } = bufferBounds();
+    const nextSequence = lastSequence + 1;
+    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="131072" nextSequence="${nextSequence}" firstSequence="${firstSequence}" lastSequence="${lastSequence}"/>`;
+  }
+
+  function mtconnectErrorXml(errorCode: string, message: string): string {
+    // Errors reuse the exact same real Header block as every other
+    // response, matching the shared base Header type real MTConnect
+    // schemas define across MTConnectDevices/Streams/Error/Assets - a
+    // consumer parsing this error's own instanceId/sequence attributes
+    // sees the same real, current buffer position it would from a
+    // successful response.
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<MTConnectError xmlns="urn:mtconnect.org:MTConnectError:1.7">
+  ${mtconnectHeader()}
+  <Errors>
+    <Error errorCode="${escapeXml(errorCode)}">${escapeXml(message)}</Error>
+  </Errors>
+</MTConnectError>
+`;
   }
 
   // GET /probe - the static device model: which HydraNodes exist and what
@@ -191,8 +246,94 @@ export function buildApp(options: BuildAppOptions = {}): Express {
         sourceUnavailableReading("spindle_temp", "SAMPLE", "TEMPERATURE", timestampMs),
       ];
     }
-    const eventsXml = readings.filter((r) => r.category === "EVENT").map(renderDataItemElement).join("\n          ");
-    const samplesXml = readings.filter((r) => r.category === "SAMPLE").map(renderDataItemElement).join("\n          ");
+    const sequence = cachedReader.sequence;
+    const eventsXml = readings.filter((r) => r.category === "EVENT").map((r) => renderDataItemElement(r, sequence)).join("\n          ");
+    const samplesXml = readings.filter((r) => r.category === "SAMPLE").map((r) => renderDataItemElement(r, sequence)).join("\n          ");
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">
+  ${mtconnectHeader()}
+  <Streams>
+    <DeviceStream name="HydraNode_1" uuid="hydra-umc-node-1">
+      <ComponentStream component="Device" name="HydraNode_1">
+        <Events>
+          ${eventsXml}
+        </Events>
+        <Samples>
+          ${samplesXml}
+        </Samples>
+      </ComponentStream>
+    </DeviceStream>
+  </Streams>
+</MTConnectStreams>
+`;
+    res.type("application/xml").send(xml);
+  });
+
+  // GET /sample?from=<sequence> - I43's own real acceptance test: a
+  // consumer resuming from a remembered sequence must get a response
+  // coherent with the real contract, never a silent mix of old and new
+  // data. This adapter keeps no real retained buffer of INTERMEDIATE
+  // readings - only the single most recent batch is ever retrievable -
+  // but bufferBounds() above never treats a real past sequence as
+  // unreachable just because more polls happened since. The 3 real,
+  // honest outcomes are: `from` omitted, or below lastSequence -> the
+  // current batch (the real answer to "what's new since then", even
+  // though any readings strictly BETWEEN `from` and lastSequence were
+  // never individually retained - a consumer sees the gap for itself by
+  // comparing sequence numbers, never told a comforting lie about it);
+  // `from` at or past lastSequence -> a real, valid EMPTY result
+  // (nothing new has happened yet); `from` below firstSequence (below 1,
+  // i.e. requesting data from before this process ever produced any) ->
+  // a real OUT_OF_RANGE error, since no amount of "give you the latest"
+  // could honestly answer a request for a time before this instance
+  // existed at all.
+  app.get("/sample", async (req, res) => {
+    const fromRaw = req.query.from;
+    let from: number | undefined;
+    if (fromRaw !== undefined) {
+      const parsed = Number(fromRaw);
+      if (typeof fromRaw !== "string" || !Number.isInteger(parsed) || parsed < 0) {
+        res.type("application/xml").send(mtconnectErrorXml("INVALID_REQUEST", `'from' must be a non-negative integer, got ${JSON.stringify(fromRaw)}`));
+        return;
+      }
+      from = parsed;
+    }
+
+    // A real read (or the real cached value) is always attempted FIRST,
+    // before any decision below - every decision then reflects the
+    // buffer's own final, real, current state, never a sequence snapshot
+    // taken before a concurrent poll (rate-limited by the same
+    // minPollIntervalMs /current already respects) could have moved it.
+    let readings: DataItemReading[];
+    try {
+      const raw = await cachedReader.getReadings();
+      readings = raw.map(toDataItemReading);
+    } catch {
+      const timestampMs = Date.now();
+      readings = [
+        sourceUnavailableReading("execution", "EVENT", "EXECUTION", timestampMs),
+        sourceUnavailableReading("avail", "EVENT", "AVAILABILITY", timestampMs),
+        sourceUnavailableReading("spindle_temp", "SAMPLE", "TEMPERATURE", timestampMs),
+      ];
+    }
+
+    const { firstSequence, lastSequence } = bufferBounds();
+    if (from !== undefined && from < firstSequence) {
+      res.type("application/xml").send(
+        mtconnectErrorXml(
+          "OUT_OF_RANGE",
+          `requested sequence ${from} is older than this agent's own retained buffer (firstSequence=${firstSequence}, instanceId=${instanceId}) - resynchronize from firstSequence`,
+        ),
+      );
+      return;
+    }
+
+    // `from === lastSequence` means "nothing new since my last read" - a
+    // real, valid, empty result, not a repeat of the same data.
+    const includeContent = from === undefined || from < lastSequence;
+    const eventsXml = includeContent ? readings.filter((r) => r.category === "EVENT").map((r) => renderDataItemElement(r, lastSequence)).join("\n          ") : "";
+    const samplesXml = includeContent ? readings.filter((r) => r.category === "SAMPLE").map((r) => renderDataItemElement(r, lastSequence)).join("\n          ") : "";
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">

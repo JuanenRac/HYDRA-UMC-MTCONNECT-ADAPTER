@@ -112,8 +112,9 @@ npm start
 
 L'adaptateur écoute sur `0.0.0.0:5000` - tout Agent/collecteur MTConnect
 peut interroger `GET http://<host>:5000/probe` (modèle statique de
-l'appareil) et `GET http://<host>:5000/current` (dernières valeurs de
-DataItem).
+l'appareil), `GET http://<host>:5000/current` (dernières valeurs de
+DataItem) et `GET http://<host>:5000/sample?from=<sequence>` (sémantique
+réelle et honnête de tampon de streaming - voir `docs/API.md`).
 
 ### Gestion des versions
 Chaque `npm run build` réel incrémente automatiquement le `version` de
@@ -225,7 +226,7 @@ Ce projet fait partie de l'écosystème robotique HYDRA-UMC du même auteur (Jua
 
 ## 📚 Documentation & Communauté
 
-- **[docs/API.md](docs/API.md)** — la référence réelle des endpoints HTTP : la forme de requête/réponse de `GET /probe`/`GET /current`, des exemples complets d'enveloppes XML, les deux vraies implémentations de `MachineReader` (`FixtureMachineReader`/`HydraServerMachineReader`), et une note explicite sur ce qui reste un placeholder (le seul HydraNode figé - l'arbre dynamique un-Device-par-robot est un chantier séparé, plus vaste).
+- **[docs/API.md](docs/API.md)** — la référence réelle des endpoints HTTP : la forme de requête/réponse de `GET /probe`/`GET /current`/`GET /sample`, des exemples complets d'enveloppes XML, les deux vraies implémentations de `MachineReader` (`FixtureMachineReader`/`HydraServerMachineReader`), et une note explicite sur ce qui reste un placeholder (le seul HydraNode figé - l'arbre dynamique un-Device-par-robot est un chantier séparé, plus vaste).
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — pile technologique et lignes directrices de codage pour une pull request.
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — les normes de comportement attendues dans cette communauté.
 - **[SECURITY.md](SECURITY.md)** — comment signaler une vulnérabilité, et les véritables axes de sécurité de ce projet.

@@ -76,6 +76,45 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.0] - I43: real sequence numbers, and a new GET /sample honoring MTConnect's own OUT_OF_RANGE contract
+
+`sequence` on every DataItem, and `nextSequence`/`firstSequence`/`lastSequence`
+in every response's own Header, were hardcoded to the literal `"1"`
+regardless of how many times this process had actually polled its
+source - no consumer could ever detect a gap, a restart, or "what's
+actually new" from them.
+
+New `CachedReader.sequence` (`src/reader.ts`) is a real, monotonic
+counter - advances by exactly 1 for each real, distinct batch of
+readings actually fetched from the source (never on a cache hit, never
+on a failed read). `server.ts`'s own `bufferBounds()` derives
+`firstSequence`/`lastSequence` from it for every response
+(`/probe`/`/current`/the new `/sample`); `firstSequence` is pinned to
+`1` the moment a first real read ever succeeds (never chasing
+`lastSequence` upward on every new poll - the real fix for a self-
+inflicted race an early version of this change hit in its own tests).
+
+New `GET /sample?from=<sequence>` (I43's own real acceptance test:
+"consumidor solicita desde una secuencia anterior al buffer... y recibe
+una respuesta coherente con el contrato, no una mezcla silenciosa"):
+`from` omitted or below `lastSequence` returns the current batch (the
+honest answer to "what's new", even when this adapter's own narrow,
+single-slot buffer couldn't retain every intermediate reading);
+`from` at or past `lastSequence` returns a real, valid, empty result;
+`from` below `firstSequence` (before this process ever produced any
+data) returns a real `MTConnectError` document (`errorCode="OUT_OF_RANGE"`)
+- the same real Header (and therefore the same real `instanceId`) every
+other response carries, so a consumer immediately sees whether it's
+talking to the same agent instance it was before. A malformed `from`
+returns a real `errorCode="INVALID_REQUEST"` instead of a guessed
+default.
+
+10 new tests (`tests/reader.test.ts`'s new sequence-tracking describe
+block, new `tests/server-sample.test.ts`), `docs/API.md` and README x7
+updated with the new endpoint's real contract.
+
+Verified: 55/55 tests, `tsc --noEmit` clean, `tools/ci_validate.py` PASS.
+
 ## [0.0.9] - Honesty check section in every README
 
 Added a "Honesty check" paragraph right after the badges in `README.md`

@@ -39,6 +39,16 @@ export class SourceUnavailableError extends Error {
 export class CachedReader {
   private cachedReadings: RawReading[] | null = null;
   private lastReadAtMs = -Infinity;
+  // I43: a real, honest MTConnect-style sequence number - starts at 0
+  // ("no real observation has ever succeeded yet"), incremented by
+  // exactly 1 for each real, distinct batch of readings this reader
+  // actually fetched from the source (never on a cache hit, and never
+  // on a failed read - see getReadings() below). Reset only by
+  // restarting the process (a fresh CachedReader instance), matching
+  // real MTConnect semantics where a sequence is only meaningful
+  // relative to one instanceId - server.ts's own `instanceId` is
+  // likewise fixed once per process lifetime.
+  private _sequence = 0;
 
   constructor(
     private readonly reader: MachineReader,
@@ -50,6 +60,13 @@ export class CachedReader {
     }
   }
 
+  /** The sequence number of the most recent real batch of readings this
+   * reader actually fetched - 0 if none has ever succeeded. Read-only:
+   * only getReadings() itself ever advances it. */
+  get sequence(): number {
+    return this._sequence;
+  }
+
   async getReadings(): Promise<RawReading[]> {
     const nowMs = this.now();
     if (this.cachedReadings !== null && nowMs - this.lastReadAtMs < this.minPollIntervalMs) {
@@ -59,6 +76,7 @@ export class CachedReader {
       const readings = await this.reader.read();
       this.cachedReadings = readings;
       this.lastReadAtMs = nowMs;
+      this._sequence += 1;
       return readings;
     } catch (err) {
       this.cachedReadings = null;

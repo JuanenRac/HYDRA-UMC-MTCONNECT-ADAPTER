@@ -118,8 +118,10 @@ npm start
 
 アダプターは `0.0.0.0:5000` でリッスンします——任意の MTConnect
 エージェント/コレクターは `GET http://<host>:5000/probe`（静的な
-デバイスモデル）と `GET http://<host>:5000/current`（最新の
-DataItem 値）を照会できます。
+デバイスモデル）、`GET http://<host>:5000/current`（最新の
+DataItem 値）、そして `GET http://<host>:5000/sample?from=<sequence>`
+（本物で正直なストリーミングバッファのセマンティクス - 詳細は
+`docs/API.md` を参照）を照会できます。
 
 ### バージョン管理
 実際の `npm run build` のたびに、`package.json` 自身の `version` が
@@ -232,7 +234,7 @@ DataItem 値）を照会できます。
 
 ## 📚 ドキュメント & コミュニティ
 
-- **[docs/API.md](docs/API.md)** —— 実際の HTTP エンドポイントリファレンス: `GET /probe`/`GET /current` のリクエスト/レスポンス形式、完全な XML エンベロープの例、2 つの実際の `MachineReader` 実装（`FixtureMachineReader`/`HydraServerMachineReader`）、そしてまだプレースホルダーのままの部分についての明示的な説明（固定された唯一の HydraNode - ロボットごとに1台の Device を持つ動的なツリーは、別途大きな作業です）。
+- **[docs/API.md](docs/API.md)** —— 実際の HTTP エンドポイントリファレンス: `GET /probe`/`GET /current`/`GET /sample` のリクエスト/レスポンス形式、完全な XML エンベロープの例、2 つの実際の `MachineReader` 実装（`FixtureMachineReader`/`HydraServerMachineReader`）、そしてまだプレースホルダーのままの部分についての明示的な説明（固定された唯一の HydraNode - ロボットごとに1台の Device を持つ動的なツリーは、別途大きな作業です）。
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** —— プルリクエストのための技術スタックとコーディング指針。
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— このコミュニティで期待される行動規範。
 - **[SECURITY.md](SECURITY.md)** —— 脆弱性の報告方法と、このプロジェクトの実際のセキュリティ重点領域。
