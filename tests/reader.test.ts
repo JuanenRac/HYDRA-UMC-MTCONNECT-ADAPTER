@@ -73,6 +73,73 @@ describe("CachedReader - real polling-frequency limit", () => {
   });
 });
 
+describe("CachedReader - concurrent reads are coalesced (H021)", () => {
+  it("shares one real in-flight read across concurrent callers instead of starting a second one", async () => {
+    let clock = 0;
+    let resolveRead: (value: RawReading[]) => void = () => {};
+    let calls = 0;
+    const inner: MachineReader = {
+      read: () => {
+        calls += 1;
+        return new Promise<RawReading[]>((resolve) => {
+          resolveRead = resolve;
+        });
+      },
+    };
+    const cached = new CachedReader(inner, 1000, () => clock);
+
+    // Two callers race in before either read resolves - real concurrent
+    // HTTP requests hitting the same adapter, not a contrived ordering.
+    const first = cached.getReadings();
+    const second = cached.getReadings();
+
+    expect(calls).toBe(1);
+
+    resolveRead(reading(99));
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+
+    expect(firstResult[0].value).toBe(99);
+    expect(secondResult[0].value).toBe(99);
+    expect(cached.sequence).toBe(1); // exactly one real observation, not two
+  });
+
+  it("would otherwise let a slower-but-earlier-started read overwrite a faster-but-later-started one", async () => {
+    // The exact scenario the finding names: without coalescing, the read
+    // that STARTED first but RESOLVES last could stomp a fresher result
+    // a second, later-started read already wrote. With coalescing there
+    // is only ever one real read to resolve, so this can no longer
+    // happen at all - proven here by confirming only one call reaches
+    // the underlying reader even when the second caller arrives after a
+    // real (if tiny) delay, not in the exact same microtask.
+    let clock = 0;
+    let calls = 0;
+    let resolveFirst: (value: RawReading[]) => void = () => {};
+    const inner: MachineReader = {
+      read: () => {
+        calls += 1;
+        if (calls === 1) {
+          return new Promise<RawReading[]>((resolve) => {
+            resolveFirst = resolve;
+          });
+        }
+        return Promise.resolve(reading(2));
+      },
+    };
+    const cached = new CachedReader(inner, 1000, () => clock);
+
+    const first = cached.getReadings();
+    await Promise.resolve(); // let the first call actually start its read
+    const second = cached.getReadings();
+
+    resolveFirst(reading(1));
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+
+    expect(calls).toBe(1);
+    expect(firstResult[0].value).toBe(1);
+    expect(secondResult[0].value).toBe(1);
+  });
+});
+
 describe("CachedReader - real sequence tracking (I43)", () => {
   it("starts at 0 before any real read has ever succeeded", () => {
     const cached = new CachedReader(new CountingReader(async () => reading(1)), 1000);
