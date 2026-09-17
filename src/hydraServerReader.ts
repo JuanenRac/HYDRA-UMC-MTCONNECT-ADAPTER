@@ -56,7 +56,16 @@ export interface HydraServerMachineReaderOptions {
    * live HYDRA-UMC-SERVER - defaults to the real global fetch (stable
    * since Node 18, already this repo's own minimum). */
   fetchImpl?: typeof fetch;
+  /** How long read() waits for HYDRA-UMC-SERVER's own GET /api/settings
+   * before giving up - real fix: this call used to have no timeout at
+   * all, so a hung/unreachable-but-connected HYDRA-UMC-SERVER left this
+   * adapter's own poll loop (reader.ts's CachedReader) stuck waiting
+   * indefinitely on one read(), instead of surfacing a real
+   * SourceUnavailableError a caller can act on. Defaults to 5 seconds. */
+  requestTimeoutMs?: number;
 }
+
+const DEFAULT_REQUEST_TIMEOUT_MS = 5000;
 
 /**
  * Real MachineReader backed by a live HYDRA-UMC-SERVER's own GET
@@ -73,15 +82,29 @@ export class HydraServerMachineReader implements MachineReader {
   private readonly baseUrl: string;
   private readonly robotId?: number;
   private readonly fetchImpl: typeof fetch;
+  private readonly requestTimeoutMs: number;
 
   constructor(options: HydraServerMachineReaderOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.robotId = options.robotId;
     this.fetchImpl = options.fetchImpl ?? fetch;
+    this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   }
 
   async read(): Promise<RawReading[]> {
-    const response = await this.fetchImpl(`${this.baseUrl}/api/settings`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+    let response: Response;
+    try {
+      response = await this.fetchImpl(`${this.baseUrl}/api/settings`, { signal: controller.signal });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(`HYDRA-UMC-SERVER did not respond within ${this.requestTimeoutMs}ms`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
     if (!response.ok) {
       throw new Error(`HYDRA-UMC-SERVER replied with HTTP ${response.status}`);
     }

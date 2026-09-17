@@ -20,6 +20,16 @@ semantic-versioning judgment calls:
 
 ---
 
+## Real request timeout on the HYDRA-UMC-SERVER poll
+
+`HydraServerMachineReader.read()` used to call `fetch()` against HYDRA-UMC-SERVER's own
+`GET /api/settings` with no timeout or `AbortController` at all - a server that accepted the TCP
+connection but never wrote a response left this adapter's own poll loop stuck waiting indefinitely on
+one `read()`, instead of surfacing a real, actionable error. `read()` now aborts after a configurable
+timeout (5 seconds by default) and reports a clear message naming it, distinguishable from a genuine
+non-2xx response or connection refusal. New test proves it against a real server that deliberately
+never responds.
+
 ## Documentation - Linked docs/API.md, fixed stale example values and CONTRIBUTING.md
 
 - **README (all 7 languages)** - `docs/API.md` was never actually linked from any
@@ -75,6 +85,10 @@ semantic-versioning judgment calls:
   changed, no version bump.
 
 ---
+
+## [0.1.2]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
 
 ## [0.1.1] - H021: concurrent reads could race, letting a slower-but-earlier read overwrite a fresher one
 

@@ -140,4 +140,23 @@ describe("HydraServerMachineReader - real HTTP against a real /api/settings shap
     const reader = new HydraServerMachineReader({ baseUrl: "http://127.0.0.1:1" });
     await expect(reader.read()).rejects.toThrow();
   });
+
+  it("times out instead of hanging forever against a real server that accepts the connection but never responds", async () => {
+    // Real regression: read() used to call fetch() with no timeout/signal
+    // at all - a HYDRA-UMC-SERVER that accepted the TCP connection but
+    // never wrote a response left this adapter's own poll loop stuck
+    // waiting indefinitely on one read().
+    server = createServer(() => {
+      // Deliberately never calls res.end()/res.writeHead().
+    });
+    const port = await new Promise<number>((resolve) => {
+      server!.listen(0, "127.0.0.1", () => resolve((server!.address() as any).port));
+    });
+    const baseUrl = `http://127.0.0.1:${port}`;
+    const reader = new HydraServerMachineReader({ baseUrl, requestTimeoutMs: 50 });
+
+    const start = Date.now();
+    await expect(reader.read()).rejects.toThrow(/did not respond within 50ms/);
+    expect(Date.now() - start).toBeGreaterThanOrEqual(40);
+  });
 });
