@@ -12,26 +12,26 @@ import { convertToMtconnectUnit, UnitConversionError } from "../src/units.js";
 
 describe("convertToMtconnectUnit", () => {
   it("passes Celsius through unchanged", () => {
-    expect(convertToMtconnectUnit(37, "CELSIUS")).toEqual({ value: 37, unit: "DEGREE_CELSIUS" });
+    expect(convertToMtconnectUnit(37, "CELSIUS")).toEqual({ value: 37, unit: "CELSIUS" });
   });
 
   it("converts a real Fahrenheit reading to Celsius (98.6F = 37C, body-temp-adjacent, hand-checkable)", () => {
     const result = convertToMtconnectUnit(98.6, "FAHRENHEIT");
-    expect(result.unit).toBe("DEGREE_CELSIUS");
+    expect(result.unit).toBe("CELSIUS");
     expect(result.value).toBeCloseTo(37, 6);
   });
 
   it("converts freezing point exactly (32F = 0C)", () => {
-    expect(convertToMtconnectUnit(32, "FAHRENHEIT")).toEqual({ value: 0, unit: "DEGREE_CELSIUS" });
+    expect(convertToMtconnectUnit(32, "FAHRENHEIT")).toEqual({ value: 0, unit: "CELSIUS" });
   });
 
   it("passes RPM through unchanged", () => {
-    expect(convertToMtconnectUnit(1200, "RPM")).toEqual({ value: 1200, unit: "REVOLUTION_PER_MINUTE" });
+    expect(convertToMtconnectUnit(1200, "RPM")).toEqual({ value: 1200, unit: "REVOLUTION/MINUTE" });
   });
 
   it("converts radians/second to RPM (1 rev/s = 2*PI rad/s = 60 RPM, hand-checkable)", () => {
     const result = convertToMtconnectUnit(2 * Math.PI, "RADIAN_PER_SECOND");
-    expect(result.unit).toBe("REVOLUTION_PER_MINUTE");
+    expect(result.unit).toBe("REVOLUTION/MINUTE");
     expect(result.value).toBeCloseTo(60, 6);
   });
 

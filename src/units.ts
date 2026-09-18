@@ -12,7 +12,15 @@
 // =============================================================================
 
 export type NativeUnit = "CELSIUS" | "FAHRENHEIT" | "RPM" | "RADIAN_PER_SECOND" | "MILLIMETER" | "INCH";
-export type MtconnectUnit = "DEGREE_CELSIUS" | "REVOLUTION_PER_MINUTE" | "MILLIMETER";
+// Real bug found while adding real XSD schema validation
+// (tests/xsd-validation.test.ts) against the actual MTConnect 1.7 schema's
+// own UnitsType enumeration: neither "DEGREE_CELSIUS" nor
+// "REVOLUTION_PER_MINUTE" is a real, valid MTConnect unit string - the
+// real standard's own values are "CELSIUS" and "REVOLUTION/MINUTE". Every
+// DataItem/Sample this adapter ever rendered a temperature or rotational
+// speed unit for was emitting a real schema-invalid `units` attribute
+// until this was caught.
+export type MtconnectUnit = "CELSIUS" | "REVOLUTION/MINUTE" | "MILLIMETER";
 
 export class UnitConversionError extends Error {}
 
@@ -27,13 +35,13 @@ export class UnitConversionError extends Error {}
 export function convertToMtconnectUnit(value: number, nativeUnit: NativeUnit): { value: number; unit: MtconnectUnit } {
   switch (nativeUnit) {
     case "CELSIUS":
-      return { value, unit: "DEGREE_CELSIUS" };
+      return { value, unit: "CELSIUS" };
     case "FAHRENHEIT":
-      return { value: ((value - 32) * 5) / 9, unit: "DEGREE_CELSIUS" };
+      return { value: ((value - 32) * 5) / 9, unit: "CELSIUS" };
     case "RPM":
-      return { value, unit: "REVOLUTION_PER_MINUTE" };
+      return { value, unit: "REVOLUTION/MINUTE" };
     case "RADIAN_PER_SECOND":
-      return { value: (value * 60) / (2 * Math.PI), unit: "REVOLUTION_PER_MINUTE" };
+      return { value: (value * 60) / (2 * Math.PI), unit: "REVOLUTION/MINUTE" };
     case "MILLIMETER":
       return { value, unit: "MILLIMETER" };
     case "INCH":

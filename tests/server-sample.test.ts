@@ -97,10 +97,22 @@ describe("GET /sample - real sequence coherence (I43)", () => {
     expect(errorInstanceId).toBe(probeInstanceId);
   });
 
-  it("before any real read has ever happened, /probe honestly reports an empty buffer (firstSequence=0, lastSequence=0)", async () => {
-    // GET /probe never triggers a read itself (it's the static device
-    // model) - on a completely fresh app, nothing has been read yet.
-    const res = await request(buildApp({ reader: counterReader().reader })).get("/probe");
+  it("before any real read has ever succeeded, a Streams response honestly reports an empty buffer (firstSequence=0, lastSequence=0)", async () => {
+    // Real gap found while adding real XSD schema validation
+    // (tests/xsd-validation.test.ts): GET /probe's own real Header shape
+    // (MTConnectDevices' HeaderType) never carries sequence/buffer-position
+    // attributes at all - the real schema forbids them there, since /probe
+    // is the static device model, not a streamed buffer. bufferBounds()'
+    // zero-reads-yet state is only ever real/observable through a Streams
+    // document (GET /current or /sample), which is what this now checks,
+    // via a reader whose every real read fails - `cachedReader.sequence`
+    // only ever advances on a real SUCCESSFUL read (see reader.ts).
+    const failingReader: MachineReader = {
+      read: async () => {
+        throw new Error("real connection refused - nothing has ever been read");
+      },
+    };
+    const res = await request(buildApp({ reader: failingReader })).get("/current");
     expect(res.text).toMatch(/firstSequence="0"/);
     expect(res.text).toMatch(/lastSequence="0"/);
   });

@@ -86,6 +86,11 @@ never responds.
 
 ---
 
+## [0.1.3]
+
+- Added real XSD schema validation: every endpoint's generated XML is now checked against the official, vendored MTConnect 1.7 schemas (`schemas/mtconnect-1.7/`, Apache-2.0) using `xmllint-wasm` (a devDependency only, never shipped in the built adapter).
+- Fixed several real spec-compliance gaps that validation caught: the Devices document now includes the required `Agent` device alongside the `HydraNode`, `ComponentStream` now carries its required `componentId`, stream sample values no longer repeat the `units` attribute (a DataItem-definition-only attribute), the `Header` element now uses the correct shape per document type (Devices/Streams vs. Error), and `CELSIUS`/`REVOLUTION/MINUTE` replace the previously invalid `DEGREE_CELSIUS`/`REVOLUTION_PER_MINUTE` unit strings.
+
 ## [0.1.2]
 
 - Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
