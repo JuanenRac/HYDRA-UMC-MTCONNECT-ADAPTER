@@ -16,7 +16,7 @@ describe("toDataItemReading - GOOD readings", () => {
     const raw: RawReading = { id: "spindle_temp", category: "SAMPLE", type: "TEMPERATURE", nativeUnit: "FAHRENHEIT", value: 98.6, timestampMs: 1_700_000_000_000 };
     const result = toDataItemReading(raw);
     expect(result.quality).toBe("GOOD");
-    expect(result.units).toBe("DEGREE_CELSIUS");
+    expect(result.units).toBe("CELSIUS");
     expect(Number(result.value)).toBeCloseTo(37, 6);
     expect(result.errorCode).toBeUndefined();
   });

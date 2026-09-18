@@ -31,7 +31,7 @@ function failingReader(): MachineReader {
 describe("GET /current - real Samples pipeline (fixture machine, mixed units)", () => {
   it("declares spindle_temp in /probe with its real MTConnect and native units", async () => {
     const res = await request(buildApp()).get("/probe");
-    expect(res.text).toContain('<DataItem id="spindle_temp" category="SAMPLE" type="TEMPERATURE" units="DEGREE_CELSIUS" nativeUnits="FAHRENHEIT"/>');
+    expect(res.text).toContain('<DataItem id="spindle_temp" category="SAMPLE" type="TEMPERATURE" units="CELSIUS" nativeUnits="FAHRENHEIT"/>');
   });
 
   it("converts a real Fahrenheit fixture reading to Celsius in the Samples block", async () => {
@@ -39,7 +39,12 @@ describe("GET /current - real Samples pipeline (fixture machine, mixed units)", 
     const res = await request(buildApp({ reader })).get("/current");
     expect(res.status).toBe(200);
     expect(res.text).toContain('<Samples>');
-    expect(res.text).toMatch(/<Temperature dataItemId="spindle_temp"[^>]*units="DEGREE_CELSIUS"[^>]*>37(\.0*)?</);
+    // `units` is a real DataItem-DEFINITION attribute only (declared once
+    // in /probe, asserted above) - the real MTConnect Streams schema's own
+    // SampleType has no `units` attribute, so a stream VALUE never repeats
+    // it (see src/server.ts's renderDataItemElement doc comment, added
+    // once tests/xsd-validation.test.ts caught this against the real XSD).
+    expect(res.text).toMatch(/<Temperature dataItemId="spindle_temp"[^>]*>37(\.0*)?</);
   });
 
   it("uses the real UTC timestamp from the reading, not the request time", async () => {

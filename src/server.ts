@@ -109,12 +109,20 @@ function escapeXml(value: string): string {
 // Every DataItem in the SAME real batch of readings shares this one
 // number, matching the batch-level granularity this adapter's own
 // buffer actually keeps (see mtconnectHeader()'s own doc comment).
+// Real bug found while adding real XSD schema validation
+// (tests/xsd-validation.test.ts) against the actual MTConnect 1.7 schema:
+// `units` is a DataItem-DEFINITION attribute (declared once in /probe's own
+// <DataItem units="...">), not a Streams sample-VALUE attribute - the real
+// schema's own SampleType/CommonSampleType complex type has no `units`
+// attribute at all, so every stream value that carried one used to fail
+// real schema validation (`attribute 'units' is not allowed`). Units are
+// still computed and still shown once in /probe; they are simply never
+// repeated onto each polled reading here.
 function renderDataItemElement(reading: DataItemReading, sequence: number): string {
   const elementName = typeToElementName(reading.type);
-  const unitsAttr = reading.units ? ` units="${escapeXml(reading.units)}"` : "";
   const errorAttr = reading.errorCode ? ` errorCode="${escapeXml(reading.errorCode)}"` : "";
   const timestamp = new Date(reading.timestampMs).toISOString();
-  return `<${elementName} dataItemId="${escapeXml(reading.id)}" timestamp="${timestamp}" sequence="${sequence}"${unitsAttr}${errorAttr}>${escapeXml(reading.value)}</${elementName}>`;
+  return `<${elementName} dataItemId="${escapeXml(reading.id)}" timestamp="${timestamp}" sequence="${sequence}"${errorAttr}>${escapeXml(reading.value)}</${elementName}>`;
 }
 
 export interface BuildAppOptions {
@@ -172,22 +180,50 @@ export function buildApp(options: BuildAppOptions = {}): Express {
     return { firstSequence: lastSequence > 0 ? 1 : 0, lastSequence };
   }
 
+  // Real gap found while adding real XSD schema validation
+  // (tests/xsd-validation.test.ts) against the actual MTConnect 1.7
+  // schemas: the Streams/Devices/Error Header element is NOT one single
+  // shape across documents - `nextSequence`/`firstSequence`/`lastSequence`
+  // belong to Streams' own HeaderType only (real schema: "attribute is not
+  // allowed" on Devices/Error), and `deviceModelChangeTime` is required on
+  // Streams/Devices but not on Error's own, narrower HeaderType. This
+  // process never mutates its own device model after startup (still
+  // exactly one hardcoded HydraNode - see this file's own top comment), so
+  // `deviceModelChangeTime` is honestly `instanceId`'s own timestamp - the
+  // moment this process (and therefore its device model) came into being.
+  const deviceModelChangeTimeIso = new Date(instanceId).toISOString();
+
   function mtconnectHeader(): string {
     const { firstSequence, lastSequence } = bufferBounds();
     const nextSequence = lastSequence + 1;
-    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="131072" nextSequence="${nextSequence}" firstSequence="${firstSequence}" lastSequence="${lastSequence}"/>`;
+    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="131072" deviceModelChangeTime="${deviceModelChangeTimeIso}" nextSequence="${nextSequence}" firstSequence="${firstSequence}" lastSequence="${lastSequence}"/>`;
+  }
+
+  // /probe's own real Header shape (MTConnectDevices' HeaderType) - no
+  // sequence/buffer-position attributes (there is no streamed buffer to
+  // report a position in), but real, required `assetBufferSize`/
+  // `assetCount` - this adapter has no real Assets support yet (a
+  // separate, larger MTConnect concept from DataItems/Streams).
+  // `assetBufferSize`'s real schema type (`AssetBufferSizeType`) requires
+  // a minimum of 1 (a buffer's own CAPACITY, never honestly zero even when
+  // unused) - "1" is the honest minimum capacity of an Assets buffer this
+  // adapter allocates but never populates; `assetCount` (how many assets
+  // are ACTUALLY stored right now) stays a real, honest "0".
+  function mtconnectStaticHeader(): string {
+    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="131072" deviceModelChangeTime="${deviceModelChangeTimeIso}" assetBufferSize="1" assetCount="0"/>`;
+  }
+
+  // MTConnectError's own real, narrower Header shape - real schema: no
+  // `deviceModelChangeTime`, no sequence attributes at all (an error
+  // response never asserts a buffer position).
+  function mtconnectErrorHeader(): string {
+    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="131072"/>`;
   }
 
   function mtconnectErrorXml(errorCode: string, message: string): string {
-    // Errors reuse the exact same real Header block as every other
-    // response, matching the shared base Header type real MTConnect
-    // schemas define across MTConnectDevices/Streams/Error/Assets - a
-    // consumer parsing this error's own instanceId/sequence attributes
-    // sees the same real, current buffer position it would from a
-    // successful response.
     return `<?xml version="1.0" encoding="UTF-8"?>
 <MTConnectError xmlns="urn:mtconnect.org:MTConnectError:1.7">
-  ${mtconnectHeader()}
+  ${mtconnectErrorHeader()}
   <Errors>
     <Error errorCode="${escapeXml(errorCode)}">${escapeXml(message)}</Error>
   </Errors>
@@ -201,16 +237,32 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // placeholder exposes exactly one HydraNode so the response shape is
   // already spec-correct end to end.
   app.get("/probe", (_req, res) => {
+    // Real gap found by tests/xsd-validation.test.ts against the actual
+    // MTConnectDevices_1.7 schema: `<Devices>` real content model is
+    // `(Agent, Device+)`, not `Device+` alone - the real standard models
+    // the Agent process ITSELF as a device (its own id/uuid/DataItems), a
+    // real, required sibling of the HydraNode device(s) it serves, not an
+    // implementation detail left out of the document. `agent_avail`
+    // reports this adapter process's own AVAILABILITY - real and always
+    // AVAILABLE while this process can render a response at all (unlike
+    // `avail` above, which reports the HydraNode's own, possibly-down,
+    // machine state).
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <MTConnectDevices xmlns="urn:mtconnect.org:MTConnectDevices:1.7">
-  ${mtconnectHeader()}
+  ${mtconnectStaticHeader()}
   <Devices>
+    <Agent id="agent" name="Agent" uuid="hydra-umc-mtconnect-adapter">
+      <Description manufacturer="JuanenRac (Electro Hobby 3D)">HYDRA-UMC-MTCONNECT-ADAPTER process</Description>
+      <DataItems>
+        <DataItem id="agent_avail" category="EVENT" type="AVAILABILITY"/>
+      </DataItems>
+    </Agent>
     <Device id="hydra_umc_1" name="HydraNode_1" uuid="hydra-umc-node-1">
       <Description manufacturer="JuanenRac (Electro Hobby 3D)">HYDRA-UMC multi-robot micro-factory cell</Description>
       <DataItems>
         <DataItem id="execution" category="EVENT" type="EXECUTION"/>
         <DataItem id="avail" category="EVENT" type="AVAILABILITY"/>
-        <DataItem id="spindle_temp" category="SAMPLE" type="TEMPERATURE" units="DEGREE_CELSIUS" nativeUnits="FAHRENHEIT"/>
+        <DataItem id="spindle_temp" category="SAMPLE" type="TEMPERATURE" units="CELSIUS" nativeUnits="FAHRENHEIT"/>
       </DataItems>
     </Device>
   </Devices>
@@ -255,7 +307,7 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   ${mtconnectHeader()}
   <Streams>
     <DeviceStream name="HydraNode_1" uuid="hydra-umc-node-1">
-      <ComponentStream component="Device" name="HydraNode_1">
+      <ComponentStream componentId="hydra_umc_1" component="Device" name="HydraNode_1">
         <Events>
           ${eventsXml}
         </Events>
@@ -340,7 +392,7 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   ${mtconnectHeader()}
   <Streams>
     <DeviceStream name="HydraNode_1" uuid="hydra-umc-node-1">
-      <ComponentStream component="Device" name="HydraNode_1">
+      <ComponentStream componentId="hydra_umc_1" component="Device" name="HydraNode_1">
         <Events>
           ${eventsXml}
         </Events>
