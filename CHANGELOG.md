@@ -95,7 +95,7 @@ never responds.
 
 - Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
 
-## [0.1.1] - H021: concurrent reads could race, letting a slower-but-earlier read overwrite a fresher one
+## [0.1.1] - concurrent reads could race, letting a slower-but-earlier read overwrite a fresher one
 
 `CachedReader.getReadings()` checked the cache-expiry condition, then
 `await`ed `this.reader.read()` - two concurrent callers that both saw the
@@ -109,7 +109,7 @@ flight) via the race itself. Fixed: concurrent callers now share one
 `inFlight` promise instead of each starting their own read. 2 new
 regression tests (57/57 total).
 
-## [0.1.0] - I43: real sequence numbers, and a new GET /sample honoring MTConnect's own OUT_OF_RANGE contract
+## [0.1.0] - real sequence numbers, and a new GET /sample honoring MTConnect's own OUT_OF_RANGE contract
 
 `sequence` on every DataItem, and `nextSequence`/`firstSequence`/`lastSequence`
 in every response's own Header, were hardcoded to the literal `"1"`
@@ -127,9 +127,9 @@ on a failed read). `server.ts`'s own `bufferBounds()` derives
 `lastSequence` upward on every new poll - the real fix for a self-
 inflicted race an early version of this change hit in its own tests).
 
-New `GET /sample?from=<sequence>` (I43's own real acceptance test:
-"consumidor solicita desde una secuencia anterior al buffer... y recibe
-una respuesta coherente con el contrato, no una mezcla silenciosa"):
+New `GET /sample?from=<sequence>` (a consumer requesting from a sequence
+older than the buffer must get a response coherent with the contract,
+never a silently mixed one):
 `from` omitted or below `lastSequence` returns the current batch (the
 honest answer to "what's new", even when this adapter's own narrow,
 single-slot buffer couldn't retain every intermediate reading);
