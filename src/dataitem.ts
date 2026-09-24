@@ -20,7 +20,7 @@ export type Quality = "GOOD" | "UNAVAILABLE";
 // SAMPLE/EVENT going UNAVAILABLE - this project's own v0 convention (like
 // other DataItem-shape decisions in this ecosystem) for real, honest
 // diagnosis instead of a bare UNAVAILABLE with no reason.
-export type ErrorCode = "NO_DATA" | "UNIT_CONVERSION_ERROR" | "SOURCE_UNAVAILABLE";
+export type ErrorCode = "NO_DATA" | "UNIT_CONVERSION_ERROR" | "SOURCE_UNAVAILABLE" | "STALE";
 
 /** One raw value as read directly from a source machine, before any
  * MTConnect-specific transformation. `value: null` is a real, explicit
@@ -81,6 +81,27 @@ export function toDataItemReading(raw: RawReading): DataItemReading {
     }
   }
   return { ...base(raw), value: String(raw.value), quality: "GOOD" };
+}
+
+/**
+ * A good reading whose own timestamp is older than `maxAgeMs` is no longer a
+ * current value: it becomes UNAVAILABLE / STALE, so a source that stopped
+ * updating is never shown as if it were live. Readings that are already
+ * UNAVAILABLE, and a non-positive `maxAgeMs` (checking switched off), pass
+ * through unchanged.
+ */
+export function markStale(reading: DataItemReading, nowMs: number, maxAgeMs: number): DataItemReading {
+  if (!(maxAgeMs > 0) || reading.quality !== "GOOD") return reading;
+  if (nowMs - reading.timestampMs <= maxAgeMs) return reading;
+  return {
+    id: reading.id,
+    category: reading.category,
+    type: reading.type,
+    timestampMs: reading.timestampMs,
+    value: "UNAVAILABLE",
+    quality: "UNAVAILABLE",
+    errorCode: "STALE",
+  };
 }
 
 /** The real degraded reading rendered when the source itself couldn't be

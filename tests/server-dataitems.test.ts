@@ -118,3 +118,18 @@ describe("GET /current - real polling-frequency cache", () => {
     expect(calls).toBe(1);
   });
 });
+
+describe("GET /current - readings that stopped updating", () => {
+  const old = { id: "spindle_temp", category: "SAMPLE" as const, type: "TEMPERATURE", nativeUnit: "CELSIUS" as const, value: 21, timestampMs: 1_700_000_000_000 };
+
+  it("renders an old reading as UNAVAILABLE when a maximum sample age is set", async () => {
+    const res = await request(buildApp({ reader: readerOf([old]), maxSampleAgeMs: 5_000 })).get("/current");
+    expect(res.status).toBe(200);
+    expect(res.text).toMatch(/<Temperature dataItemId="spindle_temp"[^>]*>UNAVAILABLE</);
+  });
+
+  it("keeps showing the value when no maximum age is configured", async () => {
+    const res = await request(buildApp({ reader: readerOf([old]) })).get("/current");
+    expect(res.text).toMatch(/<Temperature dataItemId="spindle_temp"[^>]*>21(\.0*)?</);
+  });
+});
