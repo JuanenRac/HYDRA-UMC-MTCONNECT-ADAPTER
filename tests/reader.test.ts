@@ -73,7 +73,7 @@ describe("CachedReader - real polling-frequency limit", () => {
   });
 });
 
-describe("CachedReader - concurrent reads are coalesced (H021)", () => {
+describe("CachedReader - concurrent reads are coalesced", () => {
   it("shares one real in-flight read across concurrent callers instead of starting a second one", async () => {
     let clock = 0;
     let resolveRead: (value: RawReading[]) => void = () => {};
@@ -140,7 +140,7 @@ describe("CachedReader - concurrent reads are coalesced (H021)", () => {
   });
 });
 
-describe("CachedReader - real sequence tracking (I43)", () => {
+describe("CachedReader - real sequence tracking", () => {
   it("starts at 0 before any real read has ever succeeded", () => {
     const cached = new CachedReader(new CountingReader(async () => reading(1)), 1000);
     expect(cached.sequence).toBe(0);

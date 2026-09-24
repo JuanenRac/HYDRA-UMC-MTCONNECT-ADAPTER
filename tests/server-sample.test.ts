@@ -29,7 +29,7 @@ function counterReader(): { reader: MachineReader; calls: () => number } {
   };
 }
 
-describe("GET /sample - real sequence coherence (I43)", () => {
+describe("GET /sample - real sequence coherence", () => {
   it("with no 'from', returns the same real content and sequence as /current", async () => {
     const { reader } = counterReader();
     const app = buildApp({ reader, minPollIntervalMs: 60_000 });
