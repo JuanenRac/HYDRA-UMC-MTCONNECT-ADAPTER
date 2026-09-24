@@ -86,6 +86,14 @@ never responds.
 
 ---
 
+## [0.1.4] - Stale readings are never shown as live
+
+- New `STALE` error code and `markStale()`: a good reading whose own timestamp is older
+  than the allowed age is rendered UNAVAILABLE / STALE instead of as a live value. The age
+  comes from `maxSampleAgeMs` (option) or `MAX_SAMPLE_AGE_MS`; unset or 0 keeps the previous
+  behaviour. Applied to both /current and /sample. Five new tests, unit and through the HTTP
+  route.
+
 ## [0.1.3]
 
 - Added real XSD schema validation: every endpoint's generated XML is now checked against the official, vendored MTConnect 1.7 schemas (`schemas/mtconnect-1.7/`, Apache-2.0) using `xmllint-wasm` (a devDependency only, never shipped in the built adapter).

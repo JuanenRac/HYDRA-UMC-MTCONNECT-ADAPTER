@@ -28,7 +28,7 @@
 
 import express, { type Express } from "express";
 import { readPackageVersion } from "./version.js";
-import { sourceUnavailableReading, toDataItemReading, type DataItemReading, type RawReading } from "./dataitem.js";
+import { markStale, sourceUnavailableReading, toDataItemReading, type DataItemReading, type RawReading } from "./dataitem.js";
 import { CachedReader, type MachineReader } from "./reader.js";
 import { HydraServerMachineReader } from "./hydraServerReader.js";
 
@@ -134,6 +134,10 @@ export interface BuildAppOptions {
   /** Real minimum interval between actual reads of `reader` - see
    * reader.ts's CachedReader. Defaults to POLL_INTERVAL_MS or 1000ms. */
   minPollIntervalMs?: number;
+  /** A reading older than this many milliseconds is rendered UNAVAILABLE
+   * with error code STALE instead of as a live value. Defaults to
+   * MAX_SAMPLE_AGE_MS, or 0 (checking off). */
+  maxSampleAgeMs?: number;
 }
 
 export function buildApp(options: BuildAppOptions = {}): Express {
@@ -148,6 +152,9 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // /current stay consistent with each other, matching the ANSI/MTC1.4
   // envelope shape real Agents expect to parse.
   const instanceId = Date.now();
+  const maxSampleAgeMs = options.maxSampleAgeMs ?? (Number(process.env.MAX_SAMPLE_AGE_MS) || 0);
+  const mapReadings = (raw: RawReading[]): DataItemReading[] =>
+    raw.map((r) => markStale(toDataItemReading(r), Date.now(), maxSampleAgeMs));
 
   // ("coherencia de instancia y secuencia en reinicios"): first/last/
   // nextSequence are now real, derived from cachedReader's own real
@@ -283,7 +290,7 @@ export function buildApp(options: BuildAppOptions = {}): Express {
     let readings: DataItemReading[];
     try {
       const raw = await cachedReader.getReadings();
-      readings = raw.map(toDataItemReading);
+      readings = mapReadings(raw);
     } catch {
       // The source itself is down (see reader.ts's SourceUnavailableError)
       // - real degraded output for every DataItem this adapter declares,
@@ -360,7 +367,7 @@ export function buildApp(options: BuildAppOptions = {}): Express {
     let readings: DataItemReading[];
     try {
       const raw = await cachedReader.getReadings();
-      readings = raw.map(toDataItemReading);
+      readings = mapReadings(raw);
     } catch {
       const timestampMs = Date.now();
       readings = [

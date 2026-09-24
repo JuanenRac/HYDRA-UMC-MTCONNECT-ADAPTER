@@ -9,7 +9,7 @@
 // =============================================================================
 
 import { describe, expect, it } from "vitest";
-import { sourceUnavailableReading, toDataItemReading, type RawReading } from "../src/dataitem.js";
+import { markStale, sourceUnavailableReading, toDataItemReading, type RawReading } from "../src/dataitem.js";
 
 describe("toDataItemReading - GOOD readings", () => {
   it("converts a Fahrenheit reading to a real Celsius GOOD reading", () => {
@@ -79,5 +79,29 @@ describe("sourceUnavailableReading (the whole source is down, not just one bad v
     expect(result.value).toBe("UNAVAILABLE");
     expect(result.quality).toBe("UNAVAILABLE");
     expect(result.errorCode).toBe("SOURCE_UNAVAILABLE");
+  });
+});
+
+describe("markStale", () => {
+  const good = toDataItemReading({ id: "t", category: "SAMPLE", type: "TEMPERATURE", nativeUnit: "CELSIUS", value: 20, timestampMs: 1_000 });
+
+  it("keeps a reading that is within the allowed age", () => {
+    expect(markStale(good, 1_500, 1_000)).toBe(good);
+    expect(markStale(good, 2_000, 1_000)).toBe(good); // exactly the limit is still current
+  });
+
+  it("turns an older good reading into UNAVAILABLE with the STALE code", () => {
+    const stale = markStale(good, 2_001, 1_000);
+    expect(stale.quality).toBe("UNAVAILABLE");
+    expect(stale.value).toBe("UNAVAILABLE");
+    expect(stale.errorCode).toBe("STALE");
+    expect(stale.timestampMs).toBe(1_000);
+    expect(stale.units).toBeUndefined();
+  });
+
+  it("does nothing when checking is off or the reading is already unavailable", () => {
+    expect(markStale(good, 9_999_999, 0)).toBe(good);
+    const missing = sourceUnavailableReading("t", "SAMPLE", "TEMPERATURE", 1_000);
+    expect(markStale(missing, 9_999_999, 1_000)).toBe(missing);
   });
 });
