@@ -3,7 +3,7 @@
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 // GPL-3.0 - see LICENSE
 //
-// I43's own real acceptance test: "Consumidor solicita desde una secuencia
+// this project's own real acceptance test: "Consumidor solicita desde una secuencia
 // anterior al buffer... y recibe una respuesta coherente con el contrato,
 // no una mezcla silenciosa." Real HTTP tests (supertest, over a real
 // listening socket) of GET /sample against this adapter's own real,
