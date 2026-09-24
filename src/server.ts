@@ -104,7 +104,7 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
-// I43: `sequence` is a real, caller-supplied MTConnect sequence number
+// `sequence` is a real, caller-supplied MTConnect sequence number
 // (see CachedReader's own `sequence` getter) - never a hardcoded literal.
 // Every DataItem in the SAME real batch of readings shares this one
 // number, matching the batch-level granularity this adapter's own
@@ -149,7 +149,7 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // envelope shape real Agents expect to parse.
   const instanceId = Date.now();
 
-  // I43 ("coherencia de instancia y secuencia en reinicios"): first/last/
+  // ("coherencia de instancia y secuencia en reinicios"): first/last/
   // nextSequence are now real, derived from cachedReader's own real
   // sequence counter - never the hardcoded "1" literal every response
   // used to carry regardless of how many times this process had actually
@@ -322,7 +322,7 @@ export function buildApp(options: BuildAppOptions = {}): Express {
     res.type("application/xml").send(xml);
   });
 
-  // GET /sample?from=<sequence> - I43's own real acceptance test: a
+  // GET /sample?from=<sequence> - this project's own real acceptance test: a
   // consumer resuming from a remembered sequence must get a response
   // coherent with the real contract, never a silent mix of old and new
   // data. This adapter keeps no real retained buffer of INTERMEDIATE

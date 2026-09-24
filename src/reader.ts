@@ -39,7 +39,7 @@ export class SourceUnavailableError extends Error {
 export class CachedReader {
   private cachedReadings: RawReading[] | null = null;
   private lastReadAtMs = -Infinity;
-  // H021: without this, two concurrent getReadings() calls that both see
+  // without this, two concurrent getReadings calls that both see
   // the cache as expired would each start their own independent
   // this.reader.read() - the one that started EARLIER but resolves LATER
   // (real network/device jitter) would then overwrite a fresher result a
@@ -48,7 +48,7 @@ export class CachedReader {
   // be defeated by the race. Every concurrent caller instead awaits this
   // exact same in-flight read.
   private inFlight: Promise<RawReading[]> | null = null;
-  // I43: a real, honest MTConnect-style sequence number - starts at 0
+  // a real, honest MTConnect-style sequence number - starts at 0
   // ("no real observation has ever succeeded yet"), incremented by
   // exactly 1 for each real, distinct batch of readings this reader
   // actually fetched from the source (never on a cache hit, and never
