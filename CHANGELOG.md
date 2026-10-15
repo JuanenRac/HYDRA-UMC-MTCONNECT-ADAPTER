@@ -55,8 +55,7 @@ never responds.
 
 ## Security - Real XML escaping on GET /current
 
-- **`src/server.ts`** - fixed a real XML injection/corruption bug found
-  while auditing the code: every value interpolated into the
+- **`src/server.ts`** - fixed a real XML injection/corruption bug found on code review: every value interpolated into the
   hand-built `/current` XML (a DataItem's `id`, `units`, `errorCode`, and
   its own reading value) went straight into the string with zero
   escaping. A device-reported value containing `<`, `&`, `"` or `'`
@@ -70,7 +69,7 @@ never responds.
   `<injected>&"'` reading value is rendered fully escaped and never
   appears unescaped in the response body.
 - Removed a handful of source-comment/doc references to a private,
-  unpublished internal notes file that should never have been cited from
+  unpublished file that should never have been cited from
   public source - no functional change, just an accurate, self-contained
   set of comments and docs.
 
@@ -170,7 +169,7 @@ current state of what's implemented vs. planned; no behavior changed.
 
 ## [0.0.8] - A real MachineReader, not just FixtureMachineReader forever
 
-- Found while auditing the code: this repo's
+- Found on code review: this repo's
   only `MachineReader` was ever `FixtureMachineReader` - a fixed
   synthetic reading, unconditionally, with no real machine source
   wired in anywhere. A related, deeper bug found in the same pass:
