@@ -1,0 +1,246 @@
+<p align="center">
+  <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-MTCONNECT-ADAPTER banner" width="100%">
+</p>
+
+# 🏭 HYDRA-UMC-MTCONNECT-ADAPTER
+
+<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | 🇵🇹 <b>Português</b></p>
+
+### 🛠️ Interface XML/HTTP padronizada para a monitorização de máquinas-ferramenta
+
+<p align="center">
+  <img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="MTConnect">
+  <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="XML/HTTP">
+</p>
+
+---
+
+**Verificação de honestidade - o que realmente funciona hoje:** a conversão de unidades (`src/units.ts`), o mapeamento de qualidade/marca temporal/código de erro (`src/dataitem.ts`), a consulta periódica e a cache (`src/reader.ts`), o leitor de máquina apoiado no HYDRA-UMC-SERVER (`src/hydraServerReader.ts`) e o servidor HTTP (`src/server.ts`) são todos reais e testados (75 testes a passar em 8 ficheiros, incluindo pedidos HTTP reais por um socket de escuta real através do `supertest` - não apenas uma verificação de compilação). O modelo de dispositivo está fixado em exatamente um HydraNode (`hydra_umc_1`) - prova que a superfície HTTP e a forma do XML estão corretas segundo a especificação de ponta a ponta, mas uma implementação real que monitorize mais do que um robô teria de gerar isto a partir da lista em direto do próprio HYDRA-UMC-SERVER, o que ainda não acontece. O XML emitido foi verificado quanto à forma correta segundo a especificação (espaços de nomes, ids de `Device`/`DataItem`, um `instanceId` partilhado), mas ainda não foi testado em direto contra um Agent ou colector MTConnect real de terceiros. Veja o `CHANGELOG.md` para saber exatamente o que foi entregue até agora.
+
+---
+
+## 1. 🛠️ VISÃO TÉCNICA GERAL
+
+O **HYDRA-UMC-MTCONNECT-ADAPTER** é a ponte herdada e de padrão fabril para a monitorização de máquinas-ferramenta. Implementa o protocolo MTConnect (ANSI/MTC1.4), expondo o enxame robótico como um conjunto de máquinas-ferramenta padronizadas.
+
+Fornece uma interface XML/HTTP só de leitura que permite ao software industrial tradicional monitorizar o estado de execução, as posições das ferramentas e os dados dos sensores de cada HydraNode sem precisar de controladores especializados.
+
+### Funcionalidades principais:
+* 🏭 **Dados de máquina padronizados:** expõe um HydraNode como um dispositivo compatível com o MTConnect. *(atualmente fixado em exatamente um HydraNode - `hydra_umc_1` - veja `docs/API.md`; prova que a superfície HTTP e a forma do XML estão corretas segundo a especificação de ponta a ponta, uma implementação real geraria isto a partir da lista em direto de robôs do próprio HYDRA-UMC-SERVER)*
+* 📄 **Fluxos de dados XML:** os blocos `<Events>`/`<Samples>` reais e consultados periodicamente do `GET /current`, em formato XML padrão. *(implementado)*
+* 🌐 **Interface HTTP:** acessível através de consultas RESTful simples para uma integração fácil. *(implementado)*
+* 🔌 **Fonte de máquina real:** o `HydraServerMachineReader` (`src/hydraServerReader.ts`, `HYDRA_UMC_SERVER_URL`) consulta o `GET /api/settings` de um HYDRA-UMC-SERVER em direto e reporta o estado `AVAILABLE`/`ACTIVE`/`INTERRUPTED`/`STOPPED`/`READY` de um robô real - e não apenas o recurso `FixtureMachineReader`. Veja `docs/API.md`. *(implementado)*
+* 🔍 **Compatibilidade com Agents:** verificado quanto à emissão de XML com a forma da especificação (espaços de nomes corretos, ids de `Device`/`DataItem` coerentes, um `instanceId` partilhado - veja `tests/server.test.ts`) - ainda não testado em direto contra um Agent/colector MTConnect real de terceiros.
+* 📐 **Mapeamento real de unidades/qualidade:** a unidade nativa, a qualidade, a marca temporal UTC e o código de erro de cada DataItem são calculados por um mapeamento real e versionado - testável sem hardware. *(implementado)*
+* 🩹 **Saída em modo degradado:** uma fonte que está em baixo ou reporta dados inválidos é apresentada com o valor `UNAVAILABLE` real do MTConnect e um código de erro, não com uma falha nem com dados desatualizados. *(implementado)*
+
+---
+
+## 2. 🔄 FLUXO DE DADOS MTCONNECT
+
+```mermaid
+flowchart LR
+    HYDRA["HYDRA-SERVER"] --> ADAP["MTCONNECT-ADAPTER"]
+    ADAP --> XML["XML / HTTP Stream"]
+    XML --> AGENT["MTCONNECT-AGENT"]
+    AGENT --> HTTP["HTTP GET /current"]
+    HTTP --> MONITOR["Industrial Monitor / ERP"]
+```
+
+---
+
+## 3. 🧱 ARQUITETURA E DECISÕES DE DESENHO
+
+* **Porque é um irmão, e não um submódulo, do HYDRA-UMC-GATEWAY-INDUSTRIAL.** Cada adaptador de protocolo é um processo implementável/reiniciável em separado - um problema na geração de XML do MTConnect nunca derruba os adaptadores OPC-UA ou MQTT que correm a seu lado.
+* **Porque um fluxo real de dispositivo/agent MTConnect e não uma exportação XML genérica.** O software fabril compatível com o MTConnect (muitas ferramentas de CNC/MES) espera o esquema específico de dispositivo/agent/componente que o padrão define - uma exportação genérica exigiria um analisador à medida do outro lado, o que anula o sentido de falar MTConnect.
+* **Porque o ponto de entrada só imprime a identidade/versão e termina depois de um ouvinte de verificação de saúde arrancar.** Fase de andaimes (scaffolding), o mesmo raciocínio do README do projeto-mãe - um adaptador real é, por natureza, de execução prolongada.
+* **Como isto se encaixa no resto do ecossistema.** Um serviço irmão sob o HYDRA-UMC-GATEWAY-INDUSTRIAL - traduz o estado do próprio HYDRA-UMC-SERVER num fluxo real de dispositivo/agent MTConnect.
+* **Testes HTTP reais, não apenas uma verificação de compilação.** O `tests/server.test.ts` usa o `supertest` (um pedido HTTP real por um socket de escuta real) para verificar que o `GET /probe` e o `GET /current` devolvem XML com a forma da especificação, com espaços de nomes coincidentes, ids de `Device`/`DataItem` coerentes entre os dois documentos e um `instanceId` partilhado.
+* **Porque a conversão de unidades, a classificação de qualidade e a leitura de uma máquina são três módulos separados.** O `src/units.ts` (matemática pura de conversão), o `src/dataitem.ts` (mapeamento de qualidade/marca temporal/código de erro) e o `src/reader.ts` (consulta periódica/cache de um `MachineReader`) são testáveis cada um por si, sem hardware nem HTTP - uma preocupação explícita: os erros de conversão de unidades encontrados através de uma ida e volta HTTP completa são lentos de isolar e fáceis de deixar passar.
+* **Porque um DataItem degradado é apresentado com o valor `UNAVAILABLE` real do MTConnect e não com uma forma de erro própria.** Os Agents e colectores MTConnect já sabem mostrar `UNAVAILABLE` - reutilizar o vocabulário da própria especificação significa que uma ferramenta a jusante real degrada com elegância hoje, e não só depois de aprender uma convenção específica do HYDRA-UMC. O atributo `errorCode` (`NO_DATA`/`UNIT_CONVERSION_ERROR`/`SOURCE_UNAVAILABLE`) é um acrescento v0 deste próprio projeto para diagnóstico real, documentado como tal e não apresentado como um atributo MTConnect padrão.
+* **Porque o limite de consulta do `CachedReader` é genérico e não fixado ao `spindle_temp`.** O risco real que protege - bombardear um controlador com décadas com pedidos de cada vez que o `/current` é consultado - aplica-se igualmente ao `FixtureMachineReader` e ao `HydraServerMachineReader` real (`src/hydraServerReader.ts`, que consulta o `GET /api/settings` de um HYDRA-UMC-SERVER em direto para o estado real dos robôs), pelo que o travão vive ao nível da interface `MachineReader` e não dentro do tratamento de um só DataItem.
+
+---
+
+## 📂 ESTRUTURA DE DIRETÓRIOS
+
+```text
+HYDRA-UMC-MTCONNECT-ADAPTER/
+├── src/         # Código-fonte (Node/TypeScript - Adapter, Mapper, HTTP)
+├── tests/       # Suite Vitest - mapeamento de data items, unidades, leitor e comportamento do servidor
+├── docs/
+│   └── API.md   # Referência real dos endpoints HTTP (pedidos, respostas, forma do XML)
+├── build/       # Saída compilada (npm run build)
+├── images/      # Multimédia e diagramas
+├── scripts/     # Scripts utilitários (bump-version.mjs)
+├── tools/       # ci_validate.py - validação de manifesto/CHANGELOG/documentação usada pelo CI
+└── README.md
+```
+
+Serviço de rede puro, sem hardware dedicado próprio - `hardware/`,
+`firmware/` e `os/` são omitidos segundo a política de estrutura do repositório.
+Veja [`docs/API.md`](docs/API.md) para a referência completa dos endpoints HTTP.
+
+---
+
+## 🛠️ AMBIENTE DE DESENVOLVIMENTO
+
+### Requisitos
+- [Node.js](https://nodejs.org/) (v18 ou superior recomendado)
+- npm
+
+### Instalação
+```bash
+npm install
+```
+
+### Modo de desenvolvimento
+Executa o adaptador diretamente com o `tsx` (sem empacotador):
+- **Windows:** faça duplo clique em `dev.bat` ou execute `npm run dev`
+- **Linux/Mac:** execute `./dev.sh` ou `npm run dev`
+
+### Compilação de produção
+Empacota o adaptador num único ficheiro implementável com o esbuild:
+- **Windows:** faça duplo clique em `build.bat` ou execute `npm run build`
+- **Linux/Mac:** execute `./build.sh` ou `npm run build`
+
+Depois arranque-o com:
+```bash
+npm start
+```
+
+O adaptador escuta em `0.0.0.0:5000` - qualquer Agent/colector MTConnect pode
+consultar `GET http://<host>:5000/probe` (modelo estático do dispositivo),
+`GET http://<host>:5000/current` (últimos valores dos DataItems) e
+`GET http://<host>:5000/sample?from=<sequência>` (semântica real e honesta de
+memória intermédia de fluxo - veja `docs/API.md`).
+
+Para reportar um robô real, defina `HYDRA_UMC_SERVER_URL`. O HYDRA-UMC-SERVER só responde a `GET /api/settings` a uma conta com sessão iniciada, pelo que deve dar também uma credencial ao adaptador: `HYDRA_UMC_SERVER_TOKEN` (um token que o servidor já emitiu), ou `HYDRA_UMC_SERVER_USER` e `HYDRA_UMC_SERVER_PASSWORD` (o adaptador inicia sessão por si e volta a fazê-lo quando a sessão expira). Sem nenhuma, a fonte é reportada como indisponível (`SOURCE_UNAVAILABLE`). O `HYDRA_UMC_MTCONNECT_HOST` restringe o endereço de escuta (por omissão `0.0.0.0`), por exemplo a `127.0.0.1` atrás de um proxy inverso local. As respostas do servidor são lidas até 4 MiB.
+
+### Versionamento
+Cada `npm run build` real sobe automaticamente a `version` do próprio
+`package.json` (`scripts/bump-version.mjs`, ligado como primeiro passo do
+script `build`) - um "conta-quilómetros" em base 10: patch +1 por compilação,
+transitando para o minor (e o minor para o major) depois de 9 em vez de
+alguma vez chegar a um segmento de dois dígitos (`0.0.9` -> `0.1.0`, não `0.0.10`).
+
+---
+
+## 🚀 ROTEIRO
+* **Fase 1:** implementação de OPC-UA Pub/Sub para troca de dados a alta velocidade e ponte com protocolos herdados.
+* **Fase 2:** cluster de broker MQTT para gestão massiva de dispositivos IoT e elevada concorrência.
+* **Fase 3:** suporte do adaptador MTConnect para a integração de maquinaria CNC e PLC de vários fabricantes.
+* **Fase 4:** suporte à agregação de vários dispositivos MTConnect e ao envio padronizado de telemetria XML/HTTP em fluxo.
+
+---
+
+## 🔗 Projetos relacionados
+
+Este projeto faz parte do ecossistema de robótica HYDRA-UMC do mesmo autor (JuanenRac / Electro Hobby 3D). Vale a pena conhecê-los, porque um pedido pode ser, na verdade, sobre um destes e não sobre este repositório.
+
+**Projeto-mãe**
+- **[HYDRA-UMC-GATEWAY-INDUSTRIAL](https://github.com/JuanenRac/HYDRA-UMC-GATEWAY-INDUSTRIAL)** — centro de integração que retransmite para protocolos industriais, com uma camada real de lista de comandos permitidos e contrapressão; o projeto-mãe de que este repositório é um adaptador de protocolo específico, dentro da sua própria gateway industrial.
+
+**Projetos irmãos** — os outros adaptadores de protocolo da própria gateway industrial do HYDRA-UMC-GATEWAY-INDUSTRIAL
+- **[HYDRA-UMC-OPCUA-SERVER](https://github.com/JuanenRac/HYDRA-UMC-OPCUA-SERVER)** — espaço de endereços OPC-UA real, verificado com uma sessão de cliente real do protocolo binário.
+- **[HYDRA-UMC-MQTT-BROKER](https://github.com/JuanenRac/HYDRA-UMC-MQTT-BROKER)** — broker MQTT real com autenticação opcional por cliente e ACL de tópicos.
+
+**Diretamente relacionados**
+- **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — o back-end headless real (REST/WebSocket) com que todos os clientes de controlo realmente comunicam — a origem do estado que este adaptador expõe.
+
+**Também fazem parte do ecossistema**
+
+*Hardware e plataforma centrais*
+- **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** — a placa-mãe física do braço robótico: anfitrião CM5 + STM32H745 de dois núcleos, que orquestra até 8 braços de ferramenta por CAN-OTA/SPI-OTA.
+- **[HYDRA-UMC-OS](https://github.com/JuanenRac/HYDRA-UMC-OS)** — camada de produto reproduzível do Raspberry Pi OS para o CM5: agente só de leitura, configuração/perfis validados, aprovisionamento Wi-Fi de primeiro contacto.
+- **[HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)** — o contrato JSON-Schema partilhado e a fronteira de portas de segurança contra a qual cada bridge valida os seus comandos.
+- **[HYDRA-UMC-CONNECTOR-HUB](https://github.com/JuanenRac/HYDRA-UMC-CONNECTOR-HUB)** — registo declarativo de manifestos de adaptador e validador para conectores de máquinas externas; estende a ideia de contrato do SDK a máquinas externas sem substituir os projetos de gateway industrial.
+
+*Backend central e clientes*
+- **[HYDRA-UMC-STUDIO](https://github.com/JuanenRac/HYDRA-UMC-STUDIO)** — painel web de controlo com visualização 3D em tempo real de vários robôs.
+- **[HYDRA-UMC-SUITE](https://github.com/JuanenRac/HYDRA-UMC-SUITE)** — centro de comando de enxame para desktop (PySide6) para vários servidores ao mesmo tempo, empacotado como executável independente.
+- **[HYDRA-UMC-ANDROID-CONTROL](https://github.com/JuanenRac/HYDRA-UMC-ANDROID-CONTROL)** — aplicação Android nativa de controlo, com início de sessão biométrico e um companheiro Wear OS emparelhado.
+- **[HYDRA-UMC-IOS-CONTROL](https://github.com/JuanenRac/HYDRA-UMC-IOS-CONTROL)** — aplicação de controlo para iOS/iPadOS (Flutter) com sincronização WebSocket em tempo real.
+- **[HYDRA-UMC-DSI](https://github.com/JuanenRac/HYDRA-UMC-DSI)** — interface tátil nativa para o ecrã tátil DSI de 7" integrado, executada no próprio CM5.
+- **[HYDRA-UMC-EDITOR-URDF](https://github.com/JuanenRac/HYDRA-UMC-EDITOR-URDF)** — criador/editor gráfico de URDF para desktop que envia os modelos concluídos para o catálogo do STUDIO.
+- **[HYDRA-UMC-EDITOR-STL](https://github.com/JuanenRac/HYDRA-UMC-EDITOR-STL)** — editor de modelos STL para desktop que transforma/substitui/remove/adiciona peças reais no mesmo catálogo de modelos que o HYDRA-UMC-EDITOR-URDF também edita.
+- **[HYDRA-UMC-BRIDGE-AMR](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-AMR)** — fronteira de coordenação para frotas AGV/AMR através de um publicador MQTT VDA 5050 real.
+- **[HYDRA-UMC-BRIDGE-CNC](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-CNC)** — coordenador de células CNC de alto nível com acesso real ao estado GRBL e aos bytes de controlo.
+- **[HYDRA-UMC-BRIDGE-DROIDS](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-DROIDS)** — fronteira de coordenação para droides com patas/humanoides, com um emissor real de comandos para o Boston Dynamics Spot.
+- **[HYDRA-UMC-BRIDGE-LASER](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-LASER)** — coordenador de segurança de células laser que lê 3 proteções reais por GPIO (chave, caixa e interlock).
+- **[HYDRA-UMC-BRIDGE-OPENPNP](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-OPENPNP)** — coordenador seguro de fluxo de placa de alto nível para pick-and-place com OpenPnP.
+- **[HYDRA-UMC-BRIDGE-PRINTER3D](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-PRINTER3D)** — fronteira de coordenação segura para impressoras 3D Moonraker/Klipper, com comandos de trabalho reais protegidos por portas.
+- **[HYDRA-UMC-BRIDGE-ROS2](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-ROS2)** — coordenador de segurança com um transporte ROS 2 real baseado em rclpy importado sob demanda.
+- **[HYDRA-UMC-BRIDGE-UAV](https://github.com/JuanenRac/HYDRA-UMC-BRIDGE-UAV)** — fronteira de coordenação para UAV com câmara, com um emissor real de comandos MAVLink.
+
+*Plataforma de ferramentas URTC*
+- **[URTC](https://github.com/JuanenRac/URTC)** — firmware da placa física Universal Robot Tool Controller, mais de 25 perfis de ferramenta por barramento CAN.
+- **[URTC-FLASHER](https://github.com/JuanenRac/URTC-FLASHER)** — ferramenta gráfica de gravação para desktop das placas URTC, por CAN-OTA e também SWD/JTAG de chip completo.
+- **[URTC-TESTER](https://github.com/JuanenRac/URTC-TESTER)** — ferramenta de diagnóstico CAN em tempo real para desktop das placas URTC, com um painel por perfil de ferramenta.
+- **[URTC-WEB-STUDIO](https://github.com/JuanenRac/URTC-WEB-STUDIO)** — alternativa no navegador ao URTC-TESTER através da Web Serial API, sem instalação local.
+
+*Nó de IA de visão (Hailo-8)*
+- **[HYDRA-UMC-VISION-NODE](https://github.com/JuanenRac/HYDRA-UMC-VISION-NODE)** — centro de integração do pipeline de visão Hailo-8, com uma verificação real de prontidão de hardware por fase.
+- **[HYDRA-UMC-DETECTION-HEF](https://github.com/JuanenRac/HYDRA-UMC-DETECTION-HEF)** — registo real de modelos compilados com verificação segura de carga por arquitetura Hailo e soma de verificação.
+- **[HYDRA-UMC-VISION-STREAMER](https://github.com/JuanenRac/HYDRA-UMC-VISION-STREAMER)** — pipeline GStreamer real e gerador de configuração MediaMTX com uma fronteira de integração HailoRT real.
+- **[HYDRA-UMC-VISUAL-SERVOING-API](https://github.com/JuanenRac/HYDRA-UMC-VISUAL-SERVOING-API)** — lei de correção real de servovisão baseada em posição, protegida pelo estado da zona a montante.
+- **[HYDRA-UMC-SAFETY-ZONES](https://github.com/JuanenRac/HYDRA-UMC-SAFETY-ZONES)** — verificação real de violação de zonas e pedido de E-STOP, com exigência de calibração recente.
+
+*Nó de IA cognitiva (Hailo-10)*
+- **[HYDRA-UMC-COGNITIVE-NODE](https://github.com/JuanenRac/HYDRA-UMC-COGNITIVE-NODE)** — centro de integração do pipeline cognitivo do Hailo-10 (orquestração de LLM/VLA/voz).
+- **[HYDRA-UMC-VLA-ENGINE](https://github.com/JuanenRac/HYDRA-UMC-VLA-ENGINE)** — codificação/descodificação real de tokens de ação e geração de trajetórias para um modelo Visão-Linguagem-Ação.
+- **[HYDRA-UMC-VOICE-UI](https://github.com/JuanenRac/HYDRA-UMC-VOICE-UI)** — front-end de voz real (VAD + analisador de intenções) com um relé para o relógio limitado e protegido por confirmação.
+- **[HYDRA-UMC-SEMANTIC-PLANNER](https://github.com/JuanenRac/HYDRA-UMC-SEMANTIC-PLANNER)** — decomposição real de tarefas baseada em regras e recuperação semântica de erros sobre os códigos de erro do MCU.
+- **[HYDRA-UMC-DOCS-QA](https://github.com/JuanenRac/HYDRA-UMC-DOCS-QA)** — pesquisa real de documentos TF-IDF só com a biblioteca padrão sobre a documentação Markdown deste ecossistema.
+- **[HYDRA-UMC-LOCAL-TECHNICIAN](https://github.com/JuanenRac/HYDRA-UMC-LOCAL-TECHNICIAN)** — técnico de manutenção de IA local, protegido por políticas, para o próprio ecossistema: observa, diagnostica e propõe correções; os dois níveis de maior risco não estão implementados de propósito.
+
+*Orquestração e enxame*
+- **[HYDRA-UMC-ORCHESTRATOR](https://github.com/JuanenRac/HYDRA-UMC-ORCHESTRATOR)** — centro de integração com um contrato real de relatório de saúde gRPC/Protobuf e uma máquina de estados de missões.
+- **[HYDRA-UMC-JOB-DISPATCHER](https://github.com/JuanenRac/HYDRA-UMC-JOB-DISPATCHER)** — fila real de trabalhos por prioridade com deduplicação, sobre uma API HTTP real.
+- **[HYDRA-UMC-NODE-HEALING](https://github.com/JuanenRac/HYDRA-UMC-NODE-HEALING)** — vigilante real de saúde da frota por gRPC com repetição/recuo e deteção de identidade incoerente.
+- **[HYDRA-UMC-PATH-PLANNER-3D](https://github.com/JuanenRac/HYDRA-UMC-PATH-PLANNER-3D)** — planeador real de trajetórias 3D baseado em RRT com validação real de colisões com obstáculos e espaço de trabalho.
+- **[HYDRA-UMC-SWARM-SYNC](https://github.com/JuanenRac/HYDRA-UMC-SWARM-SYNC)** — sincronização real de estado CRDT LWW-Element-Map, testada por propriedades para a convergência de várias células.
+
+*Gémeo digital e simulação*
+- **[HYDRA-UMC-TWIN](https://github.com/JuanenRac/HYDRA-UMC-TWIN)** — centro de integração do motor de gémeo digital, com um contrato real de sincronização de compatibilidade de versões.
+- **[HYDRA-UMC-HIL-BRIDGE](https://github.com/JuanenRac/HYDRA-UMC-HIL-BRIDGE)** — interlock de segurança real de hardware-in-the-loop que encaminha comandos entre a simulação e o hardware real.
+- **[HYDRA-UMC-PHYSICS-REPLICA](https://github.com/JuanenRac/HYDRA-UMC-PHYSICS-REPLICA)** — cinemática direta real e validação de limites de juntas sobre um subconjunto real de URDF.
+- **[HYDRA-UMC-SYNTHETIC-DATA-GEN](https://github.com/JuanenRac/HYDRA-UMC-SYNTHETIC-DATA-GEN)** — gerador procedural real de cenas 2D com exportação de anotações YOLO/COCO.
+
+*Dados e análise*
+- **[HYDRA-UMC-DATALAKE](https://github.com/JuanenRac/HYDRA-UMC-DATALAKE)** — armazém real de séries temporais sobre sqlite3 com uma API HTTP real de ingestão/consulta.
+- **[HYDRA-UMC-ANOMALY-DETECTOR](https://github.com/JuanenRac/HYDRA-UMC-ANOMALY-DETECTOR)** — detetor real de anomalias por FFT e linha de base estatística, com monitorização de deriva.
+- **[HYDRA-UMC-PRODUCTION-REPORTS](https://github.com/JuanenRac/HYDRA-UMC-PRODUCTION-REPORTS)** — cálculo real de OEE/disponibilidade sobre o histórico do DATALAKE, com exportação CSV reprodutível.
+- **[HYDRA-UMC-TELEMETRY-COLLECTOR](https://github.com/JuanenRac/HYDRA-UMC-TELEMETRY-COLLECTOR)** — pipeline real de ingestão CAN/WebSocket para o DATALAKE, com deduplicação por sequência.
+
+*Ferramentas complementares e operações do ecossistema*
+- **[HYDRA-UMC-DASHBOARD-AI](https://github.com/JuanenRac/HYDRA-UMC-DASHBOARD-AI)** — painéis de Resumos Inteligentes e Realce de Anomalias sobre o DATALAKE/ANOMALY-DETECTOR, com um recurso estatístico honesto.
+- **[HYDRA-UMC-TOOL-CLI](https://github.com/JuanenRac/HYDRA-UMC-TOOL-CLI)** — CLI da frota com um contrato de códigos de saída real e estável, um cliente vivo genuíno da API do HYDRA-UMC-SERVER.
+- **[HYDRA-UMC-WATCH](https://github.com/JuanenRac/HYDRA-UMC-WATCH)** — aplicação companheira WearOS com alertas hápticos reais e um relé de voz para o telemóvel emparelhado.
+- **[URTC-SMART-RACK](https://github.com/JuanenRac/URTC-SMART-RACK)** — firmware de um rack de montagem de placas com descodificação real do ID da ferramenta e lógica de pré-aquecimento Smart Idle.
+- **[URTC-VISION-TOOL](https://github.com/JuanenRac/URTC-VISION-TOOL)** — firmware mais um companheiro de visão em Python real para uma cabeça de ferramenta de inspeção térmica/RGB.
+- **[HYDRA-UMC-UPDATER](https://github.com/JuanenRac/HYDRA-UMC-UPDATER)** — ferramenta administrativa de desktop que descobre, clona e atualiza todos os repositórios deste ecossistema.
+- **[HYDRA-UMC-OS-REBUILDER](https://github.com/JuanenRac/HYDRA-UMC-OS-REBUILDER)** — ferramenta de desktop para Windows/Linux que constrói uma imagem do CM5 pronta a gravar com as versões mais recentes do ecossistema, com configuração de primeiro arranque de Wi-Fi/utilizador/SSH ao estilo do Raspberry Pi Imager.
+- **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — coordenador de incidentes de manutenção: um papel de borda de poucos privilégios recolhe um inventário/estado higienizado, um papel de plano de controlo mostra-o só de leitura e pede a um fornecedor de IA que sugira um diagnóstico; nunca aplica um patch nem implanta nada.
+- **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — anfitrião de desenvolvimento reproduzível (Raspberry Pi 5 / CM5) que guarda o código-fonte do ecossistema e executa tarefas limitadas de compilação/teste numa fila durável; um papel de desenvolvimento dedicado, explicitamente não um CM5 operacional.
+
+---
+
+## 📚 Documentação e comunidade
+
+- **[docs/API.md](docs/API.md)** — a referência real dos endpoints HTTP: a forma dos pedidos/respostas de `GET /probe`/`GET /current`/`GET /sample`, envelopes XML de exemplo completos, as duas implementações reais de `MachineReader` (`FixtureMachineReader`/`HydraServerMachineReader`) e uma indicação explícita do que ainda é provisório (o único HydraNode fixado - a árvore dinâmica, com um Device por robô, é um trabalho à parte e maior).
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — pilha tecnológica e diretrizes de código para um pull request.
+- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — as normas de comportamento esperadas nesta comunidade.
+- **[SECURITY.md](SECURITY.md)** — como comunicar uma vulnerabilidade e as áreas de segurança em que este projeto se concentra.
+- **[SUPPORT.md](SUPPORT.md)** — onde fazer perguntas e comunicar erros.
+- **[LICENSE.md](LICENSE.md)** — a licença deste projeto.
+
+## 👤 AUTOR
+**JuanenRac** (Electro Hobby 3D)
+📧 electrohobby3d@gmail.com
+📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+## 📜 LICENÇA
+GPL-3.0 - consulte LICENSE para mais detalhes.
+

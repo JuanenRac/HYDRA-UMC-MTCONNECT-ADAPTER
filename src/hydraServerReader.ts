@@ -48,6 +48,16 @@ interface HydraSettingsResponse {
 export interface HydraServerMachineReaderOptions {
   /** Base URL of a real HYDRA-UMC-SERVER instance, e.g. "http://localhost:3000". */
   baseUrl: string;
+  /** A bearer token HYDRA-UMC-SERVER already issued. HYDRA-UMC-SERVER only
+   * answers GET /api/settings to a logged-in account, so a reader with no
+   * credential at all is refused with 401 and the adapter reports the source
+   * as unavailable. */
+  token?: string;
+  /** Or an account to log in with (POST /api/login). Used when there is no
+   * `token`, and again - once per read - when a token is refused, so a
+   * long-running adapter survives the expiry of the session it logged in with. */
+  username?: string;
+  password?: string;
   /** Which real robot's own state to report - defaults to the first robot
    * found in the live roster (this adapter models exactly one HydraNode,
    * matching /probe's own single-Device shape). */
@@ -66,6 +76,23 @@ export interface HydraServerMachineReaderOptions {
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 5000;
+/** Largest response read from HYDRA-UMC-SERVER; a bigger one is refused. */
+const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
+
+class SessionRefusedError extends Error {}
+
+/** Reads a response body as JSON, refusing one larger than MAX_RESPONSE_BYTES. */
+async function readJsonCapped(response: Response): Promise<unknown> {
+  const declared = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) {
+    throw new Error(`HYDRA-UMC-SERVER's response is larger than ${MAX_RESPONSE_BYTES} bytes`);
+  }
+  const text = await response.text();
+  if (text.length > MAX_RESPONSE_BYTES) {
+    throw new Error(`HYDRA-UMC-SERVER's response is larger than ${MAX_RESPONSE_BYTES} bytes`);
+  }
+  return JSON.parse(text);
+}
 
 /**
  * Real MachineReader backed by a live HYDRA-UMC-SERVER's own GET
@@ -83,20 +110,26 @@ export class HydraServerMachineReader implements MachineReader {
   private readonly robotId?: number;
   private readonly fetchImpl: typeof fetch;
   private readonly requestTimeoutMs: number;
+  private token: string | undefined;
+  private readonly username: string | undefined;
+  private readonly password: string | undefined;
 
   constructor(options: HydraServerMachineReaderOptions) {
+    this.token = options.token?.trim() || undefined;
+    this.username = options.username || undefined;
+    this.password = options.password || undefined;
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.robotId = options.robotId;
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   }
 
-  async read(): Promise<RawReading[]> {
+  /** Fetches with a bounded wait; an abort becomes the "did not respond" error. */
+  private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.requestTimeoutMs);
-    let response: Response;
     try {
-      response = await this.fetchImpl(`${this.baseUrl}/api/settings`, { signal: controller.signal });
+      return await this.fetchImpl(url, { ...init, signal: controller.signal });
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error(`HYDRA-UMC-SERVER did not respond within ${this.requestTimeoutMs}ms`);
@@ -105,10 +138,57 @@ export class HydraServerMachineReader implements MachineReader {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /** Logs in with the configured account and keeps the token it is given. */
+  private async login(): Promise<void> {
+    const response = await this.fetchWithTimeout(`${this.baseUrl}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: this.username, password: this.password }),
+    });
+    if (response.status === 401 || response.status === 403) {
+      throw new SessionRefusedError(`HYDRA-UMC-SERVER refused the login for ${this.username}`);
+    }
+    if (!response.ok) {
+      throw new Error(`HYDRA-UMC-SERVER replied with HTTP ${response.status} to the login`);
+    }
+    const body = (await readJsonCapped(response)) as { token?: unknown };
+    if (typeof body.token !== "string" || !body.token) {
+      throw new Error("HYDRA-UMC-SERVER's login response carried no token");
+    }
+    this.token = body.token;
+  }
+
+  /** GET /api/settings with the credential, logging in first or again when allowed. */
+  private async fetchSettings(): Promise<Response> {
+    const hasAccount = this.username !== undefined && this.password !== undefined;
+    if (this.token === undefined && hasAccount) await this.login();
+    const get = () =>
+      this.fetchWithTimeout(`${this.baseUrl}/api/settings`, {
+        headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
+      });
+    let response = await get();
+    if ((response.status === 401 || response.status === 403) && hasAccount) {
+      // the session expired (or was revoked): log in once more, then ask again
+      await response.arrayBuffer().catch(() => undefined);
+      await this.login();
+      response = await get();
+    }
+    return response;
+  }
+
+  async read(): Promise<RawReading[]> {
+    const response = await this.fetchSettings();
+    if (response.status === 401 || response.status === 403) {
+      throw new SessionRefusedError(
+        `HYDRA-UMC-SERVER refused the credential (HTTP ${response.status}): set HYDRA_UMC_SERVER_TOKEN, or HYDRA_UMC_SERVER_USER and HYDRA_UMC_SERVER_PASSWORD`,
+      );
+    }
     if (!response.ok) {
       throw new Error(`HYDRA-UMC-SERVER replied with HTTP ${response.status}`);
     }
-    const body = (await response.json()) as HydraSettingsResponse;
+    const body = (await readJsonCapped(response)) as HydraSettingsResponse;
     const robot = findRobot(body, this.robotId);
     if (!robot) {
       throw new Error(

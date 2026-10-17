@@ -4,7 +4,7 @@
 
 # 🏭 HYDRA-UMC-MTCONNECT-ADAPTER
 
-<p align="center"><a href="README.md">🇺🇸 English</a> | 🇪🇸 <b>Español</b> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a></p>
+<p align="center"><a href="README.md">🇺🇸 English</a> | 🇪🇸 <b>Español</b> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🛠️ Interfaz XML/HTTP Estandarizada para Monitorización de Máquinas Herramienta
 
@@ -16,7 +16,7 @@
 
 ---
 
-**Comprobación de honestidad - qué funciona realmente hoy:** la conversión de unidades (`src/units.ts`), el mapeo de calidad/timestamp/código de error (`src/dataitem.ts`), el sondeo/caché (`src/reader.ts`), el lector de máquina real respaldado por HYDRA-UMC-SERVER (`src/hydraServerReader.ts`), y el servidor HTTP (`src/server.ts`) son todos reales y están testeados (57 tests pasando en 6 archivos, incluyendo peticiones HTTP reales sobre un socket real en escucha vía `supertest` - no solo una comprobación de compilación). El modelo de dispositivo está fijado a exactamente un HydraNode (`hydra_umc_1`) - demuestra que la superficie HTTP y la forma XML son correctas según el spec de extremo a extremo, pero un despliegue real que monitorice más de un robot necesitaría generar esto a partir del propio listado en vivo de HYDRA-UMC-SERVER, lo cual todavía no ocurre. El XML emitido se ha verificado con una forma correcta según el spec (namespaces, ids de `Device`/`DataItem`, un `instanceId` compartido) pero todavía no se ha testeado en vivo contra un Agente/colector MTConnect de terceros real. Ver `CHANGELOG.md` para lo que se ha entregado exactamente hasta ahora.
+**Comprobación de honestidad - qué funciona realmente hoy:** la conversión de unidades (`src/units.ts`), el mapeo de calidad/timestamp/código de error (`src/dataitem.ts`), el sondeo/caché (`src/reader.ts`), el lector de máquina real respaldado por HYDRA-UMC-SERVER (`src/hydraServerReader.ts`), y el servidor HTTP (`src/server.ts`) son todos reales y están testeados (75 tests pasando en 8 archivos, incluyendo peticiones HTTP reales sobre un socket real en escucha vía `supertest` - no solo una comprobación de compilación). El modelo de dispositivo está fijado a exactamente un HydraNode (`hydra_umc_1`) - demuestra que la superficie HTTP y la forma XML son correctas según el spec de extremo a extremo, pero un despliegue real que monitorice más de un robot necesitaría generar esto a partir del propio listado en vivo de HYDRA-UMC-SERVER, lo cual todavía no ocurre. El XML emitido se ha verificado con una forma correcta según el spec (namespaces, ids de `Device`/`DataItem`, un `instanceId` compartido) pero todavía no se ha testeado en vivo contra un Agente/colector MTConnect de terceros real. Ver `CHANGELOG.md` para lo que se ha entregado exactamente hasta ahora.
 
 ---
 
@@ -115,6 +115,8 @@ MTConnect puede consultar `GET http://<host>:5000/probe` (modelo estático
 de dispositivo), `GET http://<host>:5000/current` (últimos valores de
 DataItem) y `GET http://<host>:5000/sample?from=<sequence>` (semántica
 real y honesta de buffer de streaming - ver `docs/API.md`).
+
+Para informar de un robot real, defina `HYDRA_UMC_SERVER_URL`. HYDRA-UMC-SERVER solo responde a `GET /api/settings` a una cuenta con sesión iniciada, así que dé también una credencial al adaptador: `HYDRA_UMC_SERVER_TOKEN` (un token que el servidor ya emitió), o `HYDRA_UMC_SERVER_USER` y `HYDRA_UMC_SERVER_PASSWORD` (el adaptador inicia sesión por sí mismo y vuelve a hacerlo cuando la sesión caduca). Sin ninguna, la fuente se informa como no disponible (`SOURCE_UNAVAILABLE`). `HYDRA_UMC_MTCONNECT_HOST` acota la dirección de escucha (por defecto `0.0.0.0`), por ejemplo a `127.0.0.1` detrás de un proxy inverso local. Las respuestas del servidor se leen hasta 4 MiB.
 
 ### Versionado
 Cada `npm run build` real incrementa automáticamente el `version` de

@@ -4,7 +4,7 @@
 
 # 🏭 HYDRA-UMC-MTCONNECT-ADAPTER
 
-<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | 🇨🇳 <b>简体中文</b> | <a href="README_jpn.md">🇯🇵 日本語</a></p>
+<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | 🇨🇳 <b>简体中文</b> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🛠️ 用于机床监控的标准化 XML/HTTP 接口
 
@@ -16,7 +16,7 @@
 
 ---
 
-**诚实核查 - 今天真正能运行的部分：** 单位换算(`src/units.ts`)、质量/时间戳/错误码映射(`src/dataitem.ts`)、轮询/缓存(`src/reader.ts`)、由真实 HYDRA-UMC-SERVER 支持的机器读取器(`src/hydraServerReader.ts`)，以及 HTTP 服务器(`src/server.ts`)都是真实的并经过测试(6 个文件共 57 个测试通过，其中包括通过 `supertest` 对一个真实监听套接字发出的真实 HTTP 请求——而不仅仅是编译检查)。设备模型被硬编码为恰好一个 HydraNode(`hydra_umc_1`)——这证明了 HTTP 接口和 XML 结构从端到端都符合规范，但一个真正监控多台机器人的部署需要根据 HYDRA-UMC-SERVER 自身的实时机器人列表来生成，而这一点目前尚未实现。所输出的 XML 已经过验证，结构符合规范(命名空间、`Device`/`DataItem` id、共享的 `instanceId`),但尚未针对真实的第三方 MTConnect Agent 或采集器进行过实际联调测试。具体已交付的内容请见 `CHANGELOG.md`。
+**诚实核查 - 今天真正能运行的部分：** 单位换算(`src/units.ts`)、质量/时间戳/错误码映射(`src/dataitem.ts`)、轮询/缓存(`src/reader.ts`)、由真实 HYDRA-UMC-SERVER 支持的机器读取器(`src/hydraServerReader.ts`)，以及 HTTP 服务器(`src/server.ts`)都是真实的并经过测试(8 个文件共 75 个测试通过，其中包括通过 `supertest` 对一个真实监听套接字发出的真实 HTTP 请求——而不仅仅是编译检查)。设备模型被硬编码为恰好一个 HydraNode(`hydra_umc_1`)——这证明了 HTTP 接口和 XML 结构从端到端都符合规范，但一个真正监控多台机器人的部署需要根据 HYDRA-UMC-SERVER 自身的实时机器人列表来生成，而这一点目前尚未实现。所输出的 XML 已经过验证，结构符合规范(命名空间、`Device`/`DataItem` id、共享的 `instanceId`),但尚未针对真实的第三方 MTConnect Agent 或采集器进行过实际联调测试。具体已交付的内容请见 `CHANGELOG.md`。
 
 ---
 
@@ -117,6 +117,8 @@ npm start
 `GET http://<host>:5000/probe`（静态设备模型）、
 `GET http://<host>:5000/current`（最新的 DataItem 值），以及
 `GET http://<host>:5000/sample?from=<sequence>`（真实、诚实的流式缓冲区语义——见 `docs/API.md`）。
+
+要报告一台真实的机器人，请设置 `HYDRA_UMC_SERVER_URL`。HYDRA-UMC-SERVER 只会对已登录的账户响应 `GET /api/settings`，因此还要给适配器提供凭据：`HYDRA_UMC_SERVER_TOKEN`（服务器已签发的令牌），或 `HYDRA_UMC_SERVER_USER` 和 `HYDRA_UMC_SERVER_PASSWORD`（适配器自行登录，并在会话过期时重新登录）。两者都没有时，数据源会被报告为不可用（`SOURCE_UNAVAILABLE`）。`HYDRA_UMC_MTCONNECT_HOST` 用来收窄监听地址（默认 `0.0.0.0`），例如在本地反向代理之后设为 `127.0.0.1`。服务器的响应最多读取 4 MiB。
 
 ### 版本管理
 每次真实的 `npm run build` 都会自动递增 `package.json` 自身的

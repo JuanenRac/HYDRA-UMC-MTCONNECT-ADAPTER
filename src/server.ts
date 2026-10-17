@@ -71,7 +71,16 @@ function buildReader(): MachineReader {
   if (robotIdRaw && (!Number.isInteger(robotId) || robotId! < 0)) {
     throw new Error(`HYDRA-UMC-MTCONNECT-ADAPTER: HYDRA_UMC_ROBOT_ID must be a non-negative integer, got ${robotIdRaw}`);
   }
-  return new HydraServerMachineReader({ baseUrl: serverUrl, robotId });
+  // HYDRA-UMC-SERVER only answers /api/settings to a logged-in account: a
+  // token it already issued, or an account to log in with (re-done when the
+  // session expires)
+  return new HydraServerMachineReader({
+    baseUrl: serverUrl,
+    robotId,
+    token: process.env.HYDRA_UMC_SERVER_TOKEN,
+    username: process.env.HYDRA_UMC_SERVER_USER,
+    password: process.env.HYDRA_UMC_SERVER_PASSWORD,
+  });
 }
 
 function typeToElementName(type: string): string {
@@ -422,11 +431,15 @@ function main() {
   const source = process.env.HYDRA_UMC_SERVER_URL
     ? `live HYDRA-UMC-SERVER at ${process.env.HYDRA_UMC_SERVER_URL}`
     : "FixtureMachineReader (set HYDRA_UMC_SERVER_URL for real robot data)";
-  app.listen(DEFAULT_PORT, "0.0.0.0", () => {
+  // 0.0.0.0 keeps the adapter reachable by an MTConnect client on the network
+  // (that is what the standard is for); HYDRA_UMC_MTCONNECT_HOST narrows it,
+  // e.g. to 127.0.0.1 when only a local reverse proxy should reach it.
+  const host = process.env.HYDRA_UMC_MTCONNECT_HOST?.trim() || "0.0.0.0";
+  app.listen(DEFAULT_PORT, host, () => {
     console.log("=================================================");
     console.log(` HYDRA-UMC-MTCONNECT-ADAPTER v${readPackageVersion()}`);
     console.log(" ROLE: Standardized XML/HTTP interface for machine tool monitoring");
-    console.log(` STATUS: Running on port ${DEFAULT_PORT} - probe: http://localhost:${DEFAULT_PORT}/probe`);
+    console.log(` STATUS: Running on ${host}:${DEFAULT_PORT} - probe: http://localhost:${DEFAULT_PORT}/probe`);
     console.log(` SOURCE: ${source}`);
     console.log("=================================================");
   });

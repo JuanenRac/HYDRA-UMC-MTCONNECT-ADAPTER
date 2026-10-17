@@ -85,6 +85,14 @@ never responds.
 
 ---
 
+## [0.1.5] - Credentials for the live machine source, bounded responses
+
+- **The live machine source could never read a real Server:** `HydraServerMachineReader` asked `GET /api/settings` with no credential, but HYDRA-UMC-SERVER only answers that route to a logged-in account, so against a real Server `/current` always reported `SOURCE_UNAVAILABLE` (the tests only ever used a fake server with no login). The reader now takes `HYDRA_UMC_SERVER_TOKEN`, or `HYDRA_UMC_SERVER_USER` and `HYDRA_UMC_SERVER_PASSWORD` (it logs in with `POST /api/login` and logs in again, once, when the session is refused with 401/403, so a long-running adapter survives the expiry of its session). Checked end to end against a real HYDRA-UMC-SERVER process: without a credential the source was unavailable, with an account `/current` reported the robot as `AVAILABLE`/`ACTIVE`.
+- **Bounded responses:** a response from the Server larger than 4 MiB is refused instead of being read whole into memory.
+- **Listen address:** `HYDRA_UMC_MTCONNECT_HOST` narrows the address the HTTP server listens on (default `0.0.0.0`, unchanged), for example to `127.0.0.1` behind a local reverse proxy.
+- **Tests:** 7 new tests cover a guarded fake Server (no credential, token, wrong token, login and session reuse, login again after expiry, a refused login, the size cap), 75 in total. `.env.example` and `docs/API.md` document the new variables.
+- **Docs:** a README in Portuguese (`README_por.md`) joins the other translations, and the test count in the README is corrected.
+
 ## [0.1.4] - Stale readings are never shown as live
 
 - New `STALE` error code and `markStale()`: a good reading whose own timestamp is older

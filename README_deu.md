@@ -4,7 +4,7 @@
 
 # 🏭 HYDRA-UMC-MTCONNECT-ADAPTER
 
-<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | 🇩🇪 <b>Deutsch</b> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a></p>
+<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | 🇩🇪 <b>Deutsch</b> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🛠️ Standardisierte XML/HTTP-Schnittstelle zur Überwachung von Werkzeugmaschinen
 
@@ -16,7 +16,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** die Einheitenumrechnung (`src/units.ts`), das Qualitäts-/Zeitstempel-/Fehlercode-Mapping (`src/dataitem.ts`), das Polling/Caching (`src/reader.ts`), der echte, auf HYDRA-UMC-SERVER gestützte Maschinen-Reader (`src/hydraServerReader.ts`) und der HTTP-Server (`src/server.ts`) sind alle real und getestet (57 bestandene Tests über 6 Dateien, einschließlich echter HTTP-Anfragen über einen echten lauschenden Socket via `supertest` - nicht nur ein Kompilierungscheck). Das Gerätemodell ist fest auf genau einen HydraNode (`hydra_umc_1`) codiert - das beweist, dass die HTTP-Oberfläche und die XML-Form Ende-zu-Ende spezifikationskonform sind, aber ein echtes Deployment, das mehr als einen Roboter überwacht, müsste dies aus dem eigenen Live-Bestand von HYDRA-UMC-SERVER generieren, was noch nicht geschieht. Das ausgegebene XML wurde auf spezifikationskonforme Form geprüft (Namespaces, `Device`/`DataItem`-IDs, eine gemeinsame `instanceId`), aber noch nicht live gegen einen echten Drittanbieter-MTConnect-Agent oder -Collector getestet. Siehe `CHANGELOG.md` für das, was bisher genau ausgeliefert wurde.
+**Ehrlichkeitscheck - was heute wirklich läuft:** die Einheitenumrechnung (`src/units.ts`), das Qualitäts-/Zeitstempel-/Fehlercode-Mapping (`src/dataitem.ts`), das Polling/Caching (`src/reader.ts`), der echte, auf HYDRA-UMC-SERVER gestützte Maschinen-Reader (`src/hydraServerReader.ts`) und der HTTP-Server (`src/server.ts`) sind alle real und getestet (75 bestandene Tests über 8 Dateien, einschließlich echter HTTP-Anfragen über einen echten lauschenden Socket via `supertest` - nicht nur ein Kompilierungscheck). Das Gerätemodell ist fest auf genau einen HydraNode (`hydra_umc_1`) codiert - das beweist, dass die HTTP-Oberfläche und die XML-Form Ende-zu-Ende spezifikationskonform sind, aber ein echtes Deployment, das mehr als einen Roboter überwacht, müsste dies aus dem eigenen Live-Bestand von HYDRA-UMC-SERVER generieren, was noch nicht geschieht. Das ausgegebene XML wurde auf spezifikationskonforme Form geprüft (Namespaces, `Device`/`DataItem`-IDs, eine gemeinsame `instanceId`), aber noch nicht live gegen einen echten Drittanbieter-MTConnect-Agent oder -Collector getestet. Siehe `CHANGELOG.md` für das, was bisher genau ausgeliefert wurde.
 
 ---
 
@@ -115,6 +115,8 @@ kann `GET http://<host>:5000/probe` (statisches Gerätemodell),
 `GET http://<host>:5000/current` (aktuelle DataItem-Werte) und
 `GET http://<host>:5000/sample?from=<sequence>` (echte, ehrliche
 Streaming-Puffer-Semantik - siehe `docs/API.md`) abfragen.
+
+Um einen echten Roboter zu melden, setzen Sie `HYDRA_UMC_SERVER_URL`. HYDRA-UMC-SERVER beantwortet `GET /api/settings` nur einem angemeldeten Konto; geben Sie dem Adapter daher auch Zugangsdaten: `HYDRA_UMC_SERVER_TOKEN` (ein vom Server bereits ausgestelltes Token) oder `HYDRA_UMC_SERVER_USER` und `HYDRA_UMC_SERVER_PASSWORD` (der Adapter meldet sich selbst an und erneut, wenn die Sitzung abläuft). Ohne eines von beiden wird die Quelle als nicht verfügbar gemeldet (`SOURCE_UNAVAILABLE`). `HYDRA_UMC_MTCONNECT_HOST` schränkt die Lauschadresse ein (Standard `0.0.0.0`), etwa auf `127.0.0.1` hinter einem lokalen Reverse-Proxy. Antworten des Servers werden bis zu 4 MiB gelesen.
 
 ### Versionierung
 Jeder echte `npm run build` erhöht automatisch die `version` in

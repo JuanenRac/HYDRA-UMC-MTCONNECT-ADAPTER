@@ -4,7 +4,7 @@
 
 # 🏭 HYDRA-UMC-MTCONNECT-ADAPTER
 
-<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | 🇮🇹 <b>Italiano</b> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a></p>
+<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | 🇮🇹 <b>Italiano</b> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🛠️ Interfaccia XML/HTTP standardizzata per il monitoraggio delle macchine utensili
 
@@ -16,7 +16,7 @@
 
 ---
 
-**Controllo di onestà - cosa funziona davvero oggi:** la conversione di unità (`src/units.ts`), la mappatura qualità/timestamp/codice errore (`src/dataitem.ts`), il polling/caching (`src/reader.ts`), il vero lettore di macchina basato su HYDRA-UMC-SERVER (`src/hydraServerReader.ts`), e il server HTTP (`src/server.ts`) sono tutti reali e testati (57 test superati in 6 file, incluse vere richieste HTTP su un vero socket in ascolto tramite `supertest` - non solo un controllo di compilazione). Il modello del dispositivo è fisso a esattamente un HydraNode (`hydra_umc_1`) - dimostra che la superficie HTTP e la forma XML sono corrette secondo lo spec end-to-end, ma un vero deployment che monitori più di un robot dovrebbe generare questo a partire dal reale elenco live di HYDRA-UMC-SERVER, cosa che non avviene ancora. L'XML emesso è stato verificato per una forma corretta secondo lo spec (namespace, id `Device`/`DataItem`, un `instanceId` condiviso) ma non è ancora stato testato dal vivo contro un vero Agent/collector MTConnect di terze parti. Vedi `CHANGELOG.md` per ciò che è stato consegnato esattamente finora.
+**Controllo di onestà - cosa funziona davvero oggi:** la conversione di unità (`src/units.ts`), la mappatura qualità/timestamp/codice errore (`src/dataitem.ts`), il polling/caching (`src/reader.ts`), il vero lettore di macchina basato su HYDRA-UMC-SERVER (`src/hydraServerReader.ts`), e il server HTTP (`src/server.ts`) sono tutti reali e testati (75 test superati in 8 file, incluse vere richieste HTTP su un vero socket in ascolto tramite `supertest` - non solo un controllo di compilazione). Il modello del dispositivo è fisso a esattamente un HydraNode (`hydra_umc_1`) - dimostra che la superficie HTTP e la forma XML sono corrette secondo lo spec end-to-end, ma un vero deployment che monitori più di un robot dovrebbe generare questo a partire dal reale elenco live di HYDRA-UMC-SERVER, cosa che non avviene ancora. L'XML emesso è stato verificato per una forma corretta secondo lo spec (namespace, id `Device`/`DataItem`, un `instanceId` condiviso) ma non è ancora stato testato dal vivo contro un vero Agent/collector MTConnect di terze parti. Vedi `CHANGELOG.md` per ciò che è stato consegnato esattamente finora.
 
 ---
 
@@ -116,6 +116,8 @@ Agente/collettore MTConnect può interrogare
 `GET http://<host>:5000/current` (ultimi valori dei DataItem) e
 `GET http://<host>:5000/sample?from=<sequence>` (semantica reale e
 onesta del buffer di streaming - vedi `docs/API.md`).
+
+Per riportare un robot reale, imposti `HYDRA_UMC_SERVER_URL`. HYDRA-UMC-SERVER risponde a `GET /api/settings` solo a un account con accesso effettuato, quindi dia all'adattatore anche una credenziale: `HYDRA_UMC_SERVER_TOKEN` (un token già emesso dal server), oppure `HYDRA_UMC_SERVER_USER` e `HYDRA_UMC_SERVER_PASSWORD` (l'adattatore esegue il login da solo e lo ripete quando la sessione scade). Senza nessuna, la sorgente è segnalata come non disponibile (`SOURCE_UNAVAILABLE`). `HYDRA_UMC_MTCONNECT_HOST` restringe l'indirizzo di ascolto (predefinito `0.0.0.0`), ad esempio a `127.0.0.1` dietro un reverse proxy locale. Le risposte del server vengono lette fino a 4 MiB.
 
 ### Versionamento
 Ogni `npm run build` reale incrementa automaticamente il `version` di

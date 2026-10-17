@@ -4,7 +4,7 @@
 
 # 🏭 HYDRA-UMC-MTCONNECT-ADAPTER
 
-<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | 🇯🇵 <b>日本語</b></p>
+<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | 🇯🇵 <b>日本語</b> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🛠️ 工作機械監視のための標準化された XML/HTTP インターフェース
 
@@ -16,7 +16,7 @@
 
 ---
 
-**正直な現状確認 - 今日実際に動くもの:** 単位変換(`src/units.ts`)、品質/タイムスタンプ/エラーコードのマッピング(`src/dataitem.ts`)、ポーリング/キャッシュ(`src/reader.ts`)、本物の HYDRA-UMC-SERVER に基づくマシンリーダー(`src/hydraServerReader.ts`)、そして HTTP サーバー(`src/server.ts`)はすべて本物であり、テスト済みである(6 ファイルにわたり 57 件のテストが成功しており、`supertest` を使った本物のリスニングソケットに対する本物の HTTP リクエストも含まれる——単なるコンパイルチェックではない)。デバイスモデルはちょうど 1 台の HydraNode(`hydra_umc_1`)にハードコードされている——これは HTTP インターフェースと XML の形状がエンドツーエンドで仕様に正しく準拠していることを証明しているが、複数台のロボットを監視する実際のデプロイでは HYDRA-UMC-SERVER 自身のライブなロボット一覧からこれを生成する必要があり、それはまだ行われていない。出力される XML は仕様に沿った形状(名前空間、`Device`/`DataItem` の id、共有される `instanceId`)であることが検証済みだが、実際のサードパーティ製 MTConnect Agent やコレクターに対してライブでテストされたことはまだない。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
+**正直な現状確認 - 今日実際に動くもの:** 単位変換(`src/units.ts`)、品質/タイムスタンプ/エラーコードのマッピング(`src/dataitem.ts`)、ポーリング/キャッシュ(`src/reader.ts`)、本物の HYDRA-UMC-SERVER に基づくマシンリーダー(`src/hydraServerReader.ts`)、そして HTTP サーバー(`src/server.ts`)はすべて本物であり、テスト済みである(8 ファイルにわたり 75 件のテストが成功しており、`supertest` を使った本物のリスニングソケットに対する本物の HTTP リクエストも含まれる——単なるコンパイルチェックではない)。デバイスモデルはちょうど 1 台の HydraNode(`hydra_umc_1`)にハードコードされている——これは HTTP インターフェースと XML の形状がエンドツーエンドで仕様に正しく準拠していることを証明しているが、複数台のロボットを監視する実際のデプロイでは HYDRA-UMC-SERVER 自身のライブなロボット一覧からこれを生成する必要があり、それはまだ行われていない。出力される XML は仕様に沿った形状(名前空間、`Device`/`DataItem` の id、共有される `instanceId`)であることが検証済みだが、実際のサードパーティ製 MTConnect Agent やコレクターに対してライブでテストされたことはまだない。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
 
 ---
 
@@ -122,6 +122,8 @@ npm start
 DataItem 値）、そして `GET http://<host>:5000/sample?from=<sequence>`
 （本物で正直なストリーミングバッファのセマンティクス - 詳細は
 `docs/API.md` を参照）を照会できます。
+
+実際のロボットを報告するには `HYDRA_UMC_SERVER_URL` を設定します。HYDRA-UMC-SERVER は `GET /api/settings` にログイン済みのアカウントにしか応答しないため、アダプターにも認証情報を渡します。`HYDRA_UMC_SERVER_TOKEN`（サーバーがすでに発行したトークン）、または `HYDRA_UMC_SERVER_USER` と `HYDRA_UMC_SERVER_PASSWORD`（アダプターが自分でログインし、セッションの有効期限が切れると再度ログインします）。どちらもない場合、ソースは利用不可（`SOURCE_UNAVAILABLE`）として報告されます。`HYDRA_UMC_MTCONNECT_HOST` は待ち受けアドレスを絞ります（既定は `0.0.0.0`）。たとえばローカルのリバースプロキシの背後なら `127.0.0.1` にします。サーバーからの応答は 4 MiB まで読み取ります。
 
 ### バージョン管理
 実際の `npm run build` のたびに、`package.json` 自身の `version` が
