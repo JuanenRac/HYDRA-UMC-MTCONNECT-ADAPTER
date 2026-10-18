@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC-MTCONNECT-ADAPTER",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "role": "api",
   "stack": "node",
   "technologies": [
@@ -11,7 +11,7 @@
     "ANSI/MTC1.4 XML"
   ],
   "deployment_target": "cm5",
-  "maturity": "established",
+  "maturity": "functional",
   "family": "Industrial Gateway",
   "parent": "HYDRA-UMC-GATEWAY-INDUSTRIAL",
   "build": "npm install && npm run build",
