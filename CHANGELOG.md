@@ -20,6 +20,11 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.7]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
+- The licence is written as GPL-3.0-or-later in every header and in the package metadata.
+
 ## [0.1.6] - A real observation buffer, valid documents on every path, no invented machine
 
 - **`GET /sample` now works for a client.** It used to compare the `from` of a client with the sequence of a buffer that moved on every read, so a client that continued from the `nextSequence` of its last answer never received a single observation. The agent now keeps a real buffer: every change of a DataItem is an observation with its own, unique, increasing sequence number (a repeated value is not a new observation), `from` is inclusive, `count` pages the answer (default 100, at most 1000), `from` older than the buffer or beyond `nextSequence` is `OUT_OF_RANGE`, and the headers report the range the buffer really holds and its real `bufferSize` (`MTCONNECT_BUFFER_SIZE`, default 10000). A test runs the loop every MTConnect client runs (`/current`, then `/sample?from=<nextSequence>`) and checks that each change arrives exactly once.

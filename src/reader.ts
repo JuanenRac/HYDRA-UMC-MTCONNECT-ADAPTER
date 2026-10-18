@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC MTCONNECT ADAPTER - src/reader.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 //
 // Real polling-frequency limit and cache in front of a MachineReader - the
 // review's own "limitar frecuencia de polling y cache para no

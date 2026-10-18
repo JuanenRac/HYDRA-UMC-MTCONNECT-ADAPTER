@@ -9,7 +9,7 @@
 ### 🛠️ Interface XML/HTTP standardisée pour la surveillance des machines-outils
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licence-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Licence-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="MTConnect">
   <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="XML/HTTP">
 </p>
@@ -240,4 +240,4 @@ Ce projet fait partie de l'écosystème robotique HYDRA-UMC du même auteur (Jua
 📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
 
 ## 📜 LICENCE
-GPL-3.0 - Voir le fichier LICENSE pour plus de détails.
+GPL-3.0-or-later - Voir le fichier LICENSE pour plus de détails.

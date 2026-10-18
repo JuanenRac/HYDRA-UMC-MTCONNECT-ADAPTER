@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC MTCONNECT ADAPTER - tests/xsd-validation.test.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 //
 // Real schema validation, not just a shape/substring check like
 // server.test.ts already does. Validates every real endpoint's own

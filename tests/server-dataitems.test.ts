@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC MTCONNECT ADAPTER - tests/server-dataitems.test.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 //
 // Real HTTP tests (supertest, over a real listening socket) of the new
 // unit-conversion/quality/degraded-mode pipeline wired into GET /current -

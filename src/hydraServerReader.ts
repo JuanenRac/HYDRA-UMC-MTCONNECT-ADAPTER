@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC MTCONNECT ADAPTER - src/hydraServerReader.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 //
 // Found while auditing the code: server.ts's own
 // buildApp() defaulted to FixtureMachineReader unconditionally - there was

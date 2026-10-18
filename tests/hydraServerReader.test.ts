@@ -1,7 +1,7 @@
 // =============================================================================
 // HYDRA-UMC MTCONNECT ADAPTER - tests/hydraServerReader.test.ts
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-// GPL-3.0 - see LICENSE
+// GPL-3.0-or-later - see LICENSE
 //
 // Real HTTP tests: a real node:http server standing in for
 // HYDRA-UMC-SERVER's own GET /api/settings (same real shape

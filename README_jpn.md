@@ -9,7 +9,7 @@
 ### 🛠️ 工作機械監視のための標準化された XML/HTTP インターフェース
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/Licencia-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="MTConnect">
   <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="XML/HTTP">
 </p>
@@ -248,4 +248,4 @@ DataItem 値）、そして `GET http://<host>:5000/sample?from=<sequence>`
 📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
 
 ## 📜 ライセンス
-GPL-3.0 —— 詳細は LICENSE を参照してください。
+GPL-3.0-or-later —— 詳細は LICENSE を参照してください。
