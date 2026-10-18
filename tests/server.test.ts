@@ -9,9 +9,18 @@
 // spec-shaped XML.
 // =============================================================================
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { buildApp } from "../src/server.js";
+
+// The synthetic fixture machine is only served when a demonstration is asked for.
+beforeEach(() => {
+  process.env.HYDRA_UMC_MTCONNECT_DEMO = "1";
+  delete process.env.HYDRA_UMC_SERVER_URL;
+});
+afterEach(() => {
+  delete process.env.HYDRA_UMC_MTCONNECT_DEMO;
+});
 
 describe("HYDRA-UMC-MTCONNECT-ADAPTER (real HTTP)", () => {
   it("GET /probe returns a spec-shaped MTConnectDevices document", async () => {
@@ -20,7 +29,7 @@ describe("HYDRA-UMC-MTCONNECT-ADAPTER (real HTTP)", () => {
     expect(res.headers["content-type"]).toMatch(/application\/xml/);
     expect(res.text).toContain("<MTConnectDevices");
     expect(res.text).toContain('xmlns="urn:mtconnect.org:MTConnectDevices:1.7"');
-    expect(res.text).toContain('<Device id="hydra_umc_1" name="HydraNode_1" uuid="hydra-umc-node-1">');
+    expect(res.text).toContain('<Device id="hydra_umc_1" name="HydraNode_1" uuid="hydra-umc-node-demo">');
     expect(res.text).toContain('<DataItem id="execution" category="EVENT" type="EXECUTION"/>');
     expect(res.text).toContain('<DataItem id="avail" category="EVENT" type="AVAILABILITY"/>');
   });

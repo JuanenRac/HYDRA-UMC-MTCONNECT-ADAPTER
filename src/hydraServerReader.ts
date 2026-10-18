@@ -81,17 +81,27 @@ const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
 class SessionRefusedError extends Error {}
 
-/** Reads a response body as JSON, refusing one larger than MAX_RESPONSE_BYTES. */
-async function readJsonCapped(response: Response): Promise<unknown> {
+/** Reads a response body as JSON, refusing one larger than `maxBytes`: the body is read as it arrives and counted in bytes, so an endless one is never held in memory. */
+export async function readJsonCapped(response: Response, maxBytes: number = MAX_RESPONSE_BYTES): Promise<unknown> {
   const declared = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) {
-    throw new Error(`HYDRA-UMC-SERVER's response is larger than ${MAX_RESPONSE_BYTES} bytes`);
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new Error(`HYDRA-UMC-SERVER's response is larger than ${maxBytes} bytes`);
   }
-  const text = await response.text();
-  if (text.length > MAX_RESPONSE_BYTES) {
-    throw new Error(`HYDRA-UMC-SERVER's response is larger than ${MAX_RESPONSE_BYTES} bytes`);
+  if (!response.body) return JSON.parse(await response.text());
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      throw new Error(`HYDRA-UMC-SERVER's response is larger than ${maxBytes} bytes`);
+    }
+    chunks.push(value);
   }
-  return JSON.parse(text);
+  return JSON.parse(Buffer.concat(chunks).toString("utf-8"));
 }
 
 /**
@@ -199,9 +209,10 @@ export class HydraServerMachineReader implements MachineReader {
     }
 
     const timestampMs = Date.now();
+    // `online` is the flag HYDRA-UMC-SERVER keeps for the robot (the one the operator interface toggles); a robot that is not available cannot be executing anything.
     return [
       { id: "avail", category: "EVENT", type: "AVAILABILITY", value: robot.online ? "AVAILABLE" : "UNAVAILABLE", timestampMs },
-      { id: "execution", category: "EVENT", type: "EXECUTION", value: deriveExecution(robot.playbackState), timestampMs },
+      { id: "execution", category: "EVENT", type: "EXECUTION", value: robot.online ? deriveExecution(robot.playbackState) : "UNAVAILABLE", timestampMs },
       { id: "spindle_temp", category: "SAMPLE", type: "TEMPERATURE", value: null, timestampMs },
     ];
   }

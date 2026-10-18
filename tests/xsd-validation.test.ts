@@ -23,6 +23,7 @@ import { describe, expect, it } from "vitest";
 import request from "supertest";
 import { validateXML } from "xmllint-wasm";
 import { buildApp } from "../src/server.js";
+import type { MachineReader } from "../src/reader.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_DIR = path.resolve(__dirname, "../schemas/mtconnect-1.7");
@@ -87,5 +88,68 @@ describe("HYDRA-UMC-MTCONNECT-ADAPTER (real MTConnect 1.7 XSD validation)", () =
     expect(res.status).toBe(200);
     expect(res.text).toContain("OUT_OF_RANGE");
     await assertValidAgainst(res.text, "MTConnectError_1.7.xsd");
+  });
+});
+
+describe("every degraded path validates against the real MTConnectStreams_1.7.xsd too", () => {
+  const failing: MachineReader = {
+    read: async () => {
+      throw new Error("connection refused");
+    },
+  };
+  const readerOf = (value: number | string | null, timestampMs = Date.now()): MachineReader => ({
+    read: async () => [{ id: "spindle_temp", category: "SAMPLE", type: "TEMPERATURE", nativeUnit: "CELSIUS", value, timestampMs }],
+  });
+
+  it("a source that never answered (before and after the first read)", async () => {
+    const app = buildApp({ reader: failing, minPollIntervalMs: 0 });
+    await assertValidAgainst((await request(app).get("/current")).text, "MTConnectStreams_1.7.xsd");
+    await assertValidAgainst((await request(app).get("/sample")).text, "MTConnectStreams_1.7.xsd");
+  });
+
+  it("a reading with no value (NO_DATA)", async () => {
+    const res = await request(buildApp({ reader: readerOf(null) })).get("/current");
+    await assertValidAgainst(res.text, "MTConnectStreams_1.7.xsd");
+  });
+
+  it("a reading that went stale", async () => {
+    const res = await request(buildApp({ reader: readerOf(20, 1_700_000_000_000), maxSampleAgeMs: 1000 })).get("/current");
+    expect(res.text).toMatch(/<Temperature[^>]*>UNAVAILABLE</);
+    await assertValidAgainst(res.text, "MTConnectStreams_1.7.xsd");
+  });
+
+  it("an empty /sample (nothing new since nextSequence)", async () => {
+    const app = buildApp({ reader: readerOf(20) });
+    const current = await request(app).get("/current");
+    const next = current.text.match(/nextSequence="(\d+)"/)?.[1];
+    const res = await request(app).get(`/sample?from=${next}`);
+    expect(res.text).not.toContain("<DeviceStream");
+    await assertValidAgainst(res.text, "MTConnectStreams_1.7.xsd");
+  });
+
+  it("a /sample with a count, and the unconfigured and demonstration modes", async () => {
+    const app = buildApp({ reader: readerOf(20) });
+    await assertValidAgainst((await request(app).get("/sample?from=1&count=2")).text, "MTConnectStreams_1.7.xsd");
+    delete process.env.HYDRA_UMC_SERVER_URL;
+    await assertValidAgainst((await request(buildApp()).get("/current")).text, "MTConnectStreams_1.7.xsd");
+    process.env.HYDRA_UMC_MTCONNECT_DEMO = "1";
+    try {
+      const demo = buildApp();
+      await assertValidAgainst((await request(demo).get("/probe")).text, "MTConnectDevices_1.7.xsd");
+      await assertValidAgainst((await request(demo).get("/current")).text, "MTConnectStreams_1.7.xsd");
+    } finally {
+      delete process.env.HYDRA_UMC_MTCONNECT_DEMO;
+    }
+  });
+
+  it("an OUT_OF_RANGE for a sequence beyond nextSequence, and an out-of-range count", async () => {
+    const app = buildApp({ reader: readerOf(20) });
+    await request(app).get("/current");
+    const beyond = await request(app).get("/sample?from=999999");
+    expect(beyond.text).toContain("OUT_OF_RANGE");
+    await assertValidAgainst(beyond.text, "MTConnectError_1.7.xsd");
+    const tooMany = await request(app).get("/sample?count=100000");
+    expect(tooMany.text).toContain("OUT_OF_RANGE");
+    await assertValidAgainst(tooMany.text, "MTConnectError_1.7.xsd");
   });
 });

@@ -20,6 +20,16 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.1.6] - A real observation buffer, valid documents on every path, no invented machine
+
+- **`GET /sample` now works for a client.** It used to compare the `from` of a client with the sequence of a buffer that moved on every read, so a client that continued from the `nextSequence` of its last answer never received a single observation. The agent now keeps a real buffer: every change of a DataItem is an observation with its own, unique, increasing sequence number (a repeated value is not a new observation), `from` is inclusive, `count` pages the answer (default 100, at most 1000), `from` older than the buffer or beyond `nextSequence` is `OUT_OF_RANGE`, and the headers report the range the buffer really holds and its real `bufferSize` (`MTCONNECT_BUFFER_SIZE`, default 10000). A test runs the loop every MTConnect client runs (`/current`, then `/sample?from=<nextSequence>`) and checks that each change arrives exactly once.
+- **Every response validates against the official 1.7 schema.** The documents for a source that is down, a reading with no value, a stale reading, an empty `/sample` and a robot read from HYDRA-UMC-SERVER used to break it (an `errorCode` attribute the schema does not have, sequence numbers of 0, empty `Events`/`Samples`). The `errorCode` attribute is gone (the reason a DataItem is `UNAVAILABLE` is not part of the document), sequences start at 1, empty groups are left out, and the agent is reported in its own `DeviceStream` (`agent_avail` was declared in `/probe` but never observed). Tests validate all of these paths against the schema.
+- **No invented machine.** Without `HYDRA_UMC_SERVER_URL` the agent served a machine that was `AVAILABLE`, `READY` and at 60 degrees, indistinguishable from a real one. Now every DataItem is `UNAVAILABLE`; the synthetic values are served only with `HYDRA_UMC_MTCONNECT_DEMO=1`, and then the device description says `DEMONSTRATION DATA` and its uuid is different.
+- A robot that is not available no longer reports its execution state (`execution` is `UNAVAILABLE` while `avail` is).
+- `PORT`, `POLL_INTERVAL_MS`, `MAX_SAMPLE_AGE_MS` and `MTCONNECT_BUFFER_SIZE` that are set but not valid stop the start instead of being replaced by a default (`POLL_INTERVAL_MS=0` now means "read on every request"); the response of HYDRA-UMC-SERVER is counted in bytes as it arrives; the agent closes on `SIGTERM`/`SIGINT`; `X-Powered-By` is off; the version is read once and also found when the process starts from another directory; the tests are type-checked.
+- **Container:** the image runs as an unprivileged user, checks its own `/probe`, installs from the lockfile and builds on Node 24.
+- Documentation: `docs/API.md` is rewritten (valid examples, the buffer, the sources), and the README no longer claims a build that bumps the version. 100 tests.
+
 ## Real request timeout on the HYDRA-UMC-SERVER poll
 
 `HydraServerMachineReader.read()` used to call `fetch()` against HYDRA-UMC-SERVER's own

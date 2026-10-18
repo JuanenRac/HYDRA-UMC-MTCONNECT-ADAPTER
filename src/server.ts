@@ -3,27 +3,26 @@
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 // GPL-3.0 - see LICENSE
 //
-// Legacy and factory-standard bridge for machine tool monitoring (see this
-// project's own README.md for the full rationale). Implements the two
-// read-only HTTP requests every MTConnect Agent/collector expects
-// (GET /probe for the static device model, GET /current for the latest
-// DataItem values) so existing MTConnect tooling can monitor a HydraNode
-// without a specialized driver. This entry point hand-builds the XML
-// envelopes directly (no xml2js/fast-xml-parser dependency) since the
-// payload shape is fixed and small. GET /current's real Events/Samples
-// now come from a real MachineReader (buildReader() below) - either a
-// real HydraServerMachineReader polling a live HYDRA-UMC-SERVER's own
-// GET /api/settings for one real robot's own state, or the honest
-// FixtureMachineReader fallback with no server configured. The dynamic,
-// one-Device-per-robot address space HYDRA-UMC-GATEWAY-INDUSTRIAL's own
-// design eventually calls for is still separate, larger work; this
-// adapter still models exactly one HydraNode - see /probe below.
-// Verified by tests/server.test.ts with real HTTP requests against a
-// real listening server.
+// Factory-standard bridge for machine tool monitoring (see this project's
+// own README.md for the full rationale). In MTConnect terms this process is
+// an AGENT: it serves the three read-only HTTP requests every MTConnect
+// client expects (GET /probe for the static device model, GET /current for
+// the latest value of every DataItem, GET /sample for the observations since
+// a sequence number) with documents built by hand as XML strings (no xml
+// library: the payload shape is fixed and small).
+//
+// The data comes from a MachineReader (buildReader() below): a
+// HydraServerMachineReader polling a live HYDRA-UMC-SERVER's
+// GET /api/settings for one robot, the synthetic FixtureMachineReader only
+// when HYDRA_UMC_MTCONNECT_DEMO=1 asks for it, or - with neither configured -
+// a reader that reports every DataItem UNAVAILABLE. Whatever it reports is
+// recorded in an ObservationBuffer (buffer.ts) that gives every change its
+// own sequence number, which is what /current and /sample serve.
 //
 // buildApp() is exported (separately from starting the listener) so tests
-// can exercise the real Express app without binding a port, and main()
-// below is the only thing that actually calls app.listen().
+// can exercise the real Express app without binding a port; main() below is
+// the only thing that calls listen(). Every response is checked against the
+// official MTConnect 1.7 XSD in tests/xsd-validation.test.ts.
 // =============================================================================
 
 import express, { type Express } from "express";
@@ -31,18 +30,38 @@ import { readPackageVersion } from "./version.js";
 import { markStale, sourceUnavailableReading, toDataItemReading, type DataItemReading, type RawReading } from "./dataitem.js";
 import { CachedReader, type MachineReader } from "./reader.js";
 import { HydraServerMachineReader } from "./hydraServerReader.js";
+import { ObservationBuffer, type Observation } from "./buffer.js";
 
-// MTConnect implementations commonly default to 5000 (the "mtconnect"
-// convention used by most reference Agents) - kept as the default here so
-// any off-the-shelf MTConnect Agent/collector can point at this adapter
-// with zero configuration during local development.
-const DEFAULT_PORT = Number(process.env.PORT) || 5000;
+/** A non-negative integer from an environment variable; a value that is set but not one is a startup error, never a silent default. */
+export function readIntegerEnv(name: string, fallback: number, env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env[name];
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`HYDRA-UMC-MTCONNECT-ADAPTER: ${name} must be a non-negative integer, got ${raw}`);
+  }
+  return value;
+}
 
-// Real, honest v0 fallback for a deployment with no real HYDRA_UMC_SERVER_URL
-// configured (see buildReader() below) - proves the real unit-conversion/
-// quality/degraded-mode pipeline (dataitem.ts, reader.ts) and the real
-// Events/Samples rendering below end to end with fixed, synthetic
-// readings, without needing a live HYDRA-UMC-SERVER reachable.
+/** MTConnect implementations commonly default to 5000, so an off-the-shelf client can point at this agent with no configuration. */
+export function resolvePort(env: NodeJS.ProcessEnv = process.env): number {
+  const port = readIntegerEnv("PORT", 5000, env);
+  if (port < 1 || port > 65_535) throw new Error(`HYDRA-UMC-MTCONNECT-ADAPTER: PORT must be in 1..65535, got ${env.PORT}`);
+  return port;
+}
+
+// The DataItems /probe declares for the HydraNode device, and the one for the agent itself.
+const DECLARED_ITEMS: ReadonlyArray<{ id: string; category: "EVENT" | "SAMPLE"; type: string }> = [
+  { id: "execution", category: "EVENT", type: "EXECUTION" },
+  { id: "avail", category: "EVENT", type: "AVAILABILITY" },
+  { id: "spindle_temp", category: "SAMPLE", type: "TEMPERATURE" },
+];
+const AGENT_AVAILABILITY_ID = "agent_avail";
+const DEFAULT_BUFFER_SIZE = 10_000;
+const DEFAULT_SAMPLE_COUNT = 100;
+const MAX_SAMPLE_COUNT = 1000;
+
+/** Synthetic readings for a demonstration: fixed values, never to be mistaken for a machine. Only used when HYDRA_UMC_MTCONNECT_DEMO=1. */
 class FixtureMachineReader implements MachineReader {
   async read(): Promise<RawReading[]> {
     const timestampMs = Date.now();
@@ -54,18 +73,20 @@ class FixtureMachineReader implements MachineReader {
   }
 }
 
-// Real gap found while auditing the code: this
-// was always FixtureMachineReader, unconditionally - there was no real
-// MachineReader anywhere in this repo, even though a real source
-// (HYDRA-UMC-SERVER's own GET /api/settings) already exists and is
-// already what HYDRA-UMC-TOOL-CLI's own robots.go reads. Setting
-// HYDRA_UMC_SERVER_URL switches to that real reader; unset, this stays
-// exactly the honest fixture behavior it always was - no live server
-// reachable is a real, supported deployment (local development, a demo,
-// CI), not an error.
+/** The reader of a deployment with no machine source configured: it has nothing to report, so every DataItem is UNAVAILABLE. */
+class UnconfiguredMachineReader implements MachineReader {
+  async read(): Promise<RawReading[]> {
+    throw new Error("no machine source configured: set HYDRA_UMC_SERVER_URL (or HYDRA_UMC_MTCONNECT_DEMO=1 for synthetic demonstration data)");
+  }
+}
+
+function isDemo(env: NodeJS.ProcessEnv = process.env): boolean {
+  return !env.HYDRA_UMC_SERVER_URL && (env.HYDRA_UMC_MTCONNECT_DEMO ?? "").trim() === "1";
+}
+
 function buildReader(): MachineReader {
   const serverUrl = process.env.HYDRA_UMC_SERVER_URL;
-  if (!serverUrl) return new FixtureMachineReader();
+  if (!serverUrl) return isDemo() ? new FixtureMachineReader() : new UnconfiguredMachineReader();
   const robotIdRaw = process.env.HYDRA_UMC_ROBOT_ID;
   const robotId = robotIdRaw ? Number(robotIdRaw) : undefined;
   if (robotIdRaw && (!Number.isInteger(robotId) || robotId! < 0)) {
@@ -91,19 +112,11 @@ function typeToElementName(type: string): string {
     .join("");
 }
 
-// Real bug fixed while auditing the code: every interpolated value below used to
-// go straight into the hand-built XML string with zero escaping -
-// typeToElementName() sanitizes the element NAME, but nothing sanitized
-// the content/attributes. `DataItemReading.value` is always a string
-// (toDataItemReading() converts a RawReading's `number | string | null`
-// into one), and can legitimately BE an arbitrary device-reported string
-// for an EVENT-category reading (e.g. an alarm/status message) - once a
-// real MachineReader is wired to live hardware (this file's own stated
-// near-term next step), any such value containing `<`, `&` or `"` would
-// corrupt the MTConnect document for every real Agent/collector parsing
-// it, or worse, inject XML into the response. Standard XML 1.0
-// predefined-entity escaping - order matters (& must be escaped first, or
-// a later &lt; would itself get re-escaped into &amp;lt;).
+// Every interpolated value goes through this: a value reported by a device
+// can be any string, and unescaped `<`, `&` or `"` would corrupt the document
+// for every client parsing it, or inject XML into the response. Standard
+// XML 1.0 predefined entities; `&` first, or a later `&lt;` would itself be
+// re-escaped into `&amp;lt;`.
 function escapeXml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -113,133 +126,121 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
-// `sequence` is a real, caller-supplied MTConnect sequence number
-// (see CachedReader's own `sequence` getter) - never a hardcoded literal.
-// Every DataItem in the SAME real batch of readings shares this one
-// number, matching the batch-level granularity this adapter's own
-// buffer actually keeps (see mtconnectHeader()'s own doc comment).
-// Real bug found while adding real XSD schema validation
-// (tests/xsd-validation.test.ts) against the actual MTConnect 1.7 schema:
-// `units` is a DataItem-DEFINITION attribute (declared once in /probe's own
-// <DataItem units="...">), not a Streams sample-VALUE attribute - the real
-// schema's own SampleType/CommonSampleType complex type has no `units`
-// attribute at all, so every stream value that carried one used to fail
-// real schema validation (`attribute 'units' is not allowed`). Units are
-// still computed and still shown once in /probe; they are simply never
-// repeated onto each polled reading here.
-function renderDataItemElement(reading: DataItemReading, sequence: number): string {
-  const elementName = typeToElementName(reading.type);
-  const errorAttr = reading.errorCode ? ` errorCode="${escapeXml(reading.errorCode)}"` : "";
-  const timestamp = new Date(reading.timestampMs).toISOString();
-  return `<${elementName} dataItemId="${escapeXml(reading.id)}" timestamp="${timestamp}" sequence="${sequence}"${errorAttr}>${escapeXml(reading.value)}</${elementName}>`;
+// `units` is a DataItem-DEFINITION attribute (declared once in /probe), not a
+// Streams value attribute: the official schema's sample type has no `units`.
+function renderObservation(observation: Observation): string {
+  const elementName = typeToElementName(observation.type);
+  const timestamp = new Date(observation.timestampMs).toISOString();
+  return `<${elementName} dataItemId="${escapeXml(observation.id)}" timestamp="${timestamp}" sequence="${observation.sequence}">${escapeXml(observation.value)}</${elementName}>`;
+}
+
+const INDENT = "          ";
+
+function renderComponentStream(componentId: string, name: string, observations: Observation[]): string {
+  const events = observations.filter((o) => o.category === "EVENT").map(renderObservation);
+  const samples = observations.filter((o) => o.category === "SAMPLE").map(renderObservation);
+  // The schema wants at least one child inside Events/Samples: an empty one is left out altogether.
+  const parts: string[] = [];
+  if (events.length > 0) parts.push(`        <Events>\n${INDENT}${events.join(`\n${INDENT}`)}\n        </Events>`);
+  if (samples.length > 0) parts.push(`        <Samples>\n${INDENT}${samples.join(`\n${INDENT}`)}\n        </Samples>`);
+  return `      <ComponentStream componentId="${componentId}" component="Device" name="${name}">\n${parts.join("\n")}\n      </ComponentStream>`;
+}
+
+/** The DeviceStream elements for a set of observations: one for the agent and one for the HydraNode, each only if it has something to say. */
+function renderDeviceStreams(observations: Observation[], nodeUuid: string): string {
+  const agent = observations.filter((o) => o.id === AGENT_AVAILABILITY_ID);
+  const node = observations.filter((o) => o.id !== AGENT_AVAILABILITY_ID);
+  const streams: string[] = [];
+  if (agent.length > 0) {
+    streams.push(`    <DeviceStream name="Agent" uuid="hydra-umc-mtconnect-adapter">\n${renderComponentStream("agent", "Agent", agent)}\n    </DeviceStream>`);
+  }
+  if (node.length > 0) {
+    streams.push(`    <DeviceStream name="HydraNode_1" uuid="${nodeUuid}">\n${renderComponentStream("hydra_umc_1", "HydraNode_1", node)}\n    </DeviceStream>`);
+  }
+  return streams.join("\n");
 }
 
 export interface BuildAppOptions {
-  /** Real machine source to poll for /current's real Events/Samples
-   * blocks. Defaults to buildReader()'s own real choice - a real
-   * HydraServerMachineReader when HYDRA_UMC_SERVER_URL is set, otherwise
-   * the honest FixtureMachineReader fallback. */
+  /** Machine source for /current and /sample. Defaults to buildReader()'s choice. */
   reader?: MachineReader;
-  /** Real minimum interval between actual reads of `reader` - see
-   * reader.ts's CachedReader. Defaults to POLL_INTERVAL_MS or 1000ms. */
+  /** Minimum interval between actual reads of `reader` (reader.ts's CachedReader). Defaults to POLL_INTERVAL_MS or 1000 ms; 0 reads on every request. */
   minPollIntervalMs?: number;
-  /** A reading older than this many milliseconds is rendered UNAVAILABLE
-   * with error code STALE instead of as a live value. Defaults to
-   * MAX_SAMPLE_AGE_MS, or 0 (checking off). */
+  /** A reading older than this many milliseconds is reported UNAVAILABLE instead of as a live value. Defaults to MAX_SAMPLE_AGE_MS, or 0 (checking off). */
   maxSampleAgeMs?: number;
+  /** How many observations the buffer keeps (default MTCONNECT_BUFFER_SIZE or 10000). */
+  bufferSize?: number;
 }
 
 export function buildApp(options: BuildAppOptions = {}): Express {
   const app = express();
+  app.disable("x-powered-by");
+  const demo = options.reader === undefined && isDemo();
   const cachedReader = new CachedReader(
     options.reader ?? buildReader(),
-    options.minPollIntervalMs ?? (Number(process.env.POLL_INTERVAL_MS) || 1000),
+    options.minPollIntervalMs ?? readIntegerEnv("POLL_INTERVAL_MS", 1000),
   );
+  const maxSampleAgeMs = options.maxSampleAgeMs ?? readIntegerEnv("MAX_SAMPLE_AGE_MS", 0);
+  const buffer = new ObservationBuffer((options.bufferSize ?? readIntegerEnv("MTCONNECT_BUFFER_SIZE", DEFAULT_BUFFER_SIZE)) || DEFAULT_BUFFER_SIZE);
+  const nodeUuid = demo ? "hydra-umc-node-demo" : "hydra-umc-node-1";
+  const nodeDescription = demo ? "HYDRA-UMC multi-robot micro-factory cell - DEMONSTRATION DATA, not a machine" : "HYDRA-UMC multi-robot micro-factory cell";
 
-  // Every MTConnect response carries the same header block (creation time,
-  // instance ID, buffer/asset counts) - centralized here so /probe and
-  // /current stay consistent with each other, matching the ANSI/MTC1.4
-  // envelope shape real Agents expect to parse.
+  // Every response carries the same header block; a new process gets a new instanceId.
   const instanceId = Date.now();
-  const maxSampleAgeMs = options.maxSampleAgeMs ?? (Number(process.env.MAX_SAMPLE_AGE_MS) || 0);
-  const mapReadings = (raw: RawReading[]): DataItemReading[] =>
-    raw.map((r) => markStale(toDataItemReading(r), Date.now(), maxSampleAgeMs));
-
-  // ("coherencia de instancia y secuencia en reinicios"): first/last/
-  // nextSequence are now real, derived from cachedReader's own real
-  // sequence counter - never the hardcoded "1" literal every response
-  // used to carry regardless of how many times this process had actually
-  // polled its source. This adapter keeps no real historical buffer of
-  // INTERMEDIATE readings - only the single most recent batch is ever
-  // retrievable - but it never refuses to discuss any sequence number
-  // this process could plausibly have produced: `firstSequence` is
-  // pinned to 1 the moment a first real read ever succeeds (0 before
-  // that - a real, honest "nothing observed yet" state), never chasing
-  // `lastSequence` upward on every new poll. Pinning it is what makes
-  // GET /sample below able to answer "what's new since sequence N" for
-  // ANY real past N without a request's own read racing the very
-  // firstSequence it would be compared against - see that handler's own
-  // doc comment for exactly what "the buffer" honestly promises here.
-  // `instanceId` above already changes on every real process restart; a
-  // consumer that stored a `from` cursor against a sequence lower than
-  // this process could ever have produced (i.e. before it started, or
-  // from a since-restarted, different instance) gets a real, explicit
-  // OUT_OF_RANGE error from GET /sample below, never a silent mix of old
-  // and new data.
-  // The one real place firstSequence's own pinning rule lives - see
-  // mtconnectHeader's own doc comment above for why it never chases
-  // lastSequence upward. Shared by mtconnectHeader() and GET /sample's
-  // own OUT_OF_RANGE check below so the two can never silently drift
-  // apart into disagreeing about what "in range" means.
-  function bufferBounds(): { firstSequence: number; lastSequence: number } {
-    const lastSequence = cachedReader.sequence;
-    return { firstSequence: lastSequence > 0 ? 1 : 0, lastSequence };
-  }
-
-  // Real gap found while adding real XSD schema validation
-  // (tests/xsd-validation.test.ts) against the actual MTConnect 1.7
-  // schemas: the Streams/Devices/Error Header element is NOT one single
-  // shape across documents - `nextSequence`/`firstSequence`/`lastSequence`
-  // belong to Streams' own HeaderType only (real schema: "attribute is not
-  // allowed" on Devices/Error), and `deviceModelChangeTime` is required on
-  // Streams/Devices but not on Error's own, narrower HeaderType. This
-  // process never mutates its own device model after startup (still
-  // exactly one hardcoded HydraNode - see this file's own top comment), so
-  // `deviceModelChangeTime` is honestly `instanceId`'s own timestamp - the
-  // moment this process (and therefore its device model) came into being.
   const deviceModelChangeTimeIso = new Date(instanceId).toISOString();
 
-  function mtconnectHeader(): string {
-    const { firstSequence, lastSequence } = bufferBounds();
-    const nextSequence = lastSequence + 1;
-    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="131072" deviceModelChangeTime="${deviceModelChangeTimeIso}" nextSequence="${nextSequence}" firstSequence="${firstSequence}" lastSequence="${lastSequence}"/>`;
+  // Every DataItem starts out UNAVAILABLE, as an MTConnect agent reports it
+  // before its first data: a client never meets a DataItem without an
+  // observation, and the buffer is never empty.
+  const startedAt = Date.now();
+  buffer.record({ id: AGENT_AVAILABILITY_ID, category: "EVENT", type: "AVAILABILITY", value: "AVAILABLE", timestampMs: startedAt });
+  for (const item of DECLARED_ITEMS) buffer.record({ ...item, value: "UNAVAILABLE", timestampMs: startedAt });
+
+  const mapReadings = (raw: RawReading[]): DataItemReading[] => raw.map((r) => markStale(toDataItemReading(r), Date.now(), maxSampleAgeMs));
+
+  /** Reads the source (or its cache) and records whatever changed. Always called before a Streams document is built. */
+  async function refresh(): Promise<void> {
+    let readings: DataItemReading[];
+    try {
+      readings = mapReadings(await cachedReader.getReadings());
+    } catch {
+      // The source itself is down: every DataItem it would have reported is UNAVAILABLE - not a 500, and not old data pretending to be live.
+      const timestampMs = Date.now();
+      readings = DECLARED_ITEMS.map((item) => sourceUnavailableReading(item.id, item.category, item.type, timestampMs));
+    }
+    const now = Date.now();
+    for (const reading of readings) {
+      if (reading.category !== "EVENT" && reading.category !== "SAMPLE") continue;
+      buffer.record({
+        id: reading.id,
+        category: reading.category,
+        type: reading.type,
+        value: reading.value,
+        timestampMs: reading.quality === "GOOD" ? reading.timestampMs : now,
+      });
+    }
   }
 
-  // /probe's own real Header shape (MTConnectDevices' HeaderType) - no
-  // sequence/buffer-position attributes (there is no streamed buffer to
-  // report a position in), but real, required `assetBufferSize`/
-  // `assetCount` - this adapter has no real Assets support yet (a
-  // separate, larger MTConnect concept from DataItems/Streams).
-  // `assetBufferSize`'s real schema type (`AssetBufferSizeType`) requires
-  // a minimum of 1 (a buffer's own CAPACITY, never honestly zero even when
-  // unused) - "1" is the honest minimum capacity of an Assets buffer this
-  // adapter allocates but never populates; `assetCount` (how many assets
-  // are ACTUALLY stored right now) stays a real, honest "0".
-  function mtconnectStaticHeader(): string {
-    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="131072" deviceModelChangeTime="${deviceModelChangeTimeIso}" assetBufferSize="1" assetCount="0"/>`;
+  function streamsHeader(nextSequence: number): string {
+    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="${buffer.capacity}" deviceModelChangeTime="${deviceModelChangeTimeIso}" nextSequence="${nextSequence}" firstSequence="${buffer.firstSequence}" lastSequence="${buffer.lastSequence}"/>`;
   }
 
-  // MTConnectError's own real, narrower Header shape - real schema: no
-  // `deviceModelChangeTime`, no sequence attributes at all (an error
-  // response never asserts a buffer position).
-  function mtconnectErrorHeader(): string {
-    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="131072"/>`;
+  // /probe's Header (MTConnectDevices' HeaderType): no sequence attributes
+  // (there is no stream position in a device model) but a required asset
+  // buffer; this agent has no Assets, so a buffer of the minimum size 1 and
+  // a count of 0.
+  function devicesHeader(): string {
+    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="${buffer.capacity}" deviceModelChangeTime="${deviceModelChangeTimeIso}" assetBufferSize="1" assetCount="0"/>`;
   }
 
-  function mtconnectErrorXml(errorCode: string, message: string): string {
+  // MTConnectError's own narrower Header: no model change time, no sequences.
+  function errorHeader(): string {
+    return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="${buffer.capacity}"/>`;
+  }
+
+  function errorXml(errorCode: string, message: string): string {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <MTConnectError xmlns="urn:mtconnect.org:MTConnectError:1.7">
-  ${mtconnectErrorHeader()}
+  ${errorHeader()}
   <Errors>
     <Error errorCode="${escapeXml(errorCode)}">${escapeXml(message)}</Error>
   </Errors>
@@ -247,34 +248,33 @@ export function buildApp(options: BuildAppOptions = {}): Express {
 `;
   }
 
-  // GET /probe - the static device model: which HydraNodes exist and what
-  // DataItems each one exposes. Real deployments generate this from the
-  // live robot roster (HYDRA-UMC-SERVER's own /api/hydra-info); this
-  // placeholder exposes exactly one HydraNode so the response shape is
-  // already spec-correct end to end.
+  function streamsXml(nextSequence: number, observations: Observation[]): string {
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">
+  ${streamsHeader(nextSequence)}
+  <Streams>
+${renderDeviceStreams(observations, nodeUuid)}
+  </Streams>
+</MTConnectStreams>
+`;
+  }
+
+  // GET /probe - the static device model: the agent itself and the HydraNode
+  // with the DataItems it exposes. (`<Devices>` is `(Agent, Device+)`: the
+  // agent is modelled as a device of its own.)
   app.get("/probe", (_req, res) => {
-    // Real gap found by tests/xsd-validation.test.ts against the actual
-    // MTConnectDevices_1.7 schema: `<Devices>` real content model is
-    // `(Agent, Device+)`, not `Device+` alone - the real standard models
-    // the Agent process ITSELF as a device (its own id/uuid/DataItems), a
-    // real, required sibling of the HydraNode device(s) it serves, not an
-    // implementation detail left out of the document. `agent_avail`
-    // reports this adapter process's own AVAILABILITY - real and always
-    // AVAILABLE while this process can render a response at all (unlike
-    // `avail` above, which reports the HydraNode's own, possibly-down,
-    // machine state).
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <MTConnectDevices xmlns="urn:mtconnect.org:MTConnectDevices:1.7">
-  ${mtconnectStaticHeader()}
+  ${devicesHeader()}
   <Devices>
     <Agent id="agent" name="Agent" uuid="hydra-umc-mtconnect-adapter">
       <Description manufacturer="JuanenRac (Electro Hobby 3D)">HYDRA-UMC-MTCONNECT-ADAPTER process</Description>
       <DataItems>
-        <DataItem id="agent_avail" category="EVENT" type="AVAILABILITY"/>
+        <DataItem id="${AGENT_AVAILABILITY_ID}" category="EVENT" type="AVAILABILITY"/>
       </DataItems>
     </Agent>
-    <Device id="hydra_umc_1" name="HydraNode_1" uuid="hydra-umc-node-1">
-      <Description manufacturer="JuanenRac (Electro Hobby 3D)">HYDRA-UMC multi-robot micro-factory cell</Description>
+    <Device id="hydra_umc_1" name="HydraNode_1" uuid="${nodeUuid}">
+      <Description manufacturer="JuanenRac (Electro Hobby 3D)">${escapeXml(nodeDescription)}</Description>
       <DataItems>
         <DataItem id="execution" category="EVENT" type="EXECUTION"/>
         <DataItem id="avail" category="EVENT" type="AVAILABILITY"/>
@@ -287,166 +287,98 @@ export function buildApp(options: BuildAppOptions = {}): Express {
     res.type("application/xml").send(xml);
   });
 
-  // GET /current - the latest value of every DataItem declared in /probe.
-  // Real gap closed in the same review pass as buildReader() above:
-  // Execution/Availability used to be hardcoded literals here,
-  // unconditionally - wiring in a real reader would have changed nothing
-  // about this response. All three DataItems now render from the SAME
-  // real reader output, split by DataItemReading.category - the exact
-  // real unit-conversion/quality/degraded-mode pipeline (dataitem.ts/
-  // reader.ts) FixtureMachineReader's own spindle_temp already used.
+  // GET /current - the latest observation of every DataItem declared in /probe.
   app.get("/current", async (_req, res) => {
-    let readings: DataItemReading[];
-    try {
-      const raw = await cachedReader.getReadings();
-      readings = mapReadings(raw);
-    } catch {
-      // The source itself is down (see reader.ts's SourceUnavailableError)
-      // - real degraded output for every DataItem this adapter declares,
-      // not a 500 and not stale data pretending to be live. A source that
-      // cannot be reached at all cannot honestly report its own execution
-      // state either - this is real UNAVAILABLE, not the old hardcoded
-      // "READY" a down source used to still claim.
-      const timestampMs = Date.now();
-      readings = [
-        sourceUnavailableReading("execution", "EVENT", "EXECUTION", timestampMs),
-        sourceUnavailableReading("avail", "EVENT", "AVAILABILITY", timestampMs),
-        sourceUnavailableReading("spindle_temp", "SAMPLE", "TEMPERATURE", timestampMs),
-      ];
-    }
-    const sequence = cachedReader.sequence;
-    const eventsXml = readings.filter((r) => r.category === "EVENT").map((r) => renderDataItemElement(r, sequence)).join("\n          ");
-    const samplesXml = readings.filter((r) => r.category === "SAMPLE").map((r) => renderDataItemElement(r, sequence)).join("\n          ");
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">
-  ${mtconnectHeader()}
-  <Streams>
-    <DeviceStream name="HydraNode_1" uuid="hydra-umc-node-1">
-      <ComponentStream componentId="hydra_umc_1" component="Device" name="HydraNode_1">
-        <Events>
-          ${eventsXml}
-        </Events>
-        <Samples>
-          ${samplesXml}
-        </Samples>
-      </ComponentStream>
-    </DeviceStream>
-  </Streams>
-</MTConnectStreams>
-`;
-    res.type("application/xml").send(xml);
+    await refresh();
+    res.type("application/xml").send(streamsXml(buffer.nextSequence, buffer.current()));
   });
 
-  // GET /sample?from=<sequence> - this project's own real acceptance test: a
-  // consumer resuming from a remembered sequence must get a response
-  // coherent with the real contract, never a silent mix of old and new
-  // data. This adapter keeps no real retained buffer of INTERMEDIATE
-  // readings - only the single most recent batch is ever retrievable -
-  // but bufferBounds() above never treats a real past sequence as
-  // unreachable just because more polls happened since. The 3 real,
-  // honest outcomes are: `from` omitted, or below lastSequence -> the
-  // current batch (the real answer to "what's new since then", even
-  // though any readings strictly BETWEEN `from` and lastSequence were
-  // never individually retained - a consumer sees the gap for itself by
-  // comparing sequence numbers, never told a comforting lie about it);
-  // `from` at or past lastSequence -> a real, valid EMPTY result
-  // (nothing new has happened yet); `from` below firstSequence (below 1,
-  // i.e. requesting data from before this process ever produced any) ->
-  // a real OUT_OF_RANGE error, since no amount of "give you the latest"
-  // could honestly answer a request for a time before this instance
-  // existed at all.
+  // GET /sample?from=<sequence>&count=<n> - the observations with sequence >=
+  // `from` (inclusive), at most `count`. A client that continues from the
+  // `nextSequence` of its previous answer receives every change exactly once.
+  // `from` older than the oldest observation still held, or beyond
+  // nextSequence, is an OUT_OF_RANGE error: it never gets a silent mix of old
+  // and new data.
   app.get("/sample", async (req, res) => {
     const fromRaw = req.query.from;
     let from: number | undefined;
     if (fromRaw !== undefined) {
       const parsed = Number(fromRaw);
-      if (typeof fromRaw !== "string" || !Number.isInteger(parsed) || parsed < 0) {
-        res.type("application/xml").send(mtconnectErrorXml("INVALID_REQUEST", `'from' must be a non-negative integer, got ${JSON.stringify(fromRaw)}`));
+      if (typeof fromRaw !== "string" || fromRaw.trim() === "" || !Number.isInteger(parsed) || parsed < 0) {
+        res.type("application/xml").send(errorXml("INVALID_REQUEST", `'from' must be a non-negative integer, got ${JSON.stringify(fromRaw)}`));
         return;
       }
       from = parsed;
     }
-
-    // A real read (or the real cached value) is always attempted FIRST,
-    // before any decision below - every decision then reflects the
-    // buffer's own final, real, current state, never a sequence snapshot
-    // taken before a concurrent poll (rate-limited by the same
-    // minPollIntervalMs /current already respects) could have moved it.
-    let readings: DataItemReading[];
-    try {
-      const raw = await cachedReader.getReadings();
-      readings = mapReadings(raw);
-    } catch {
-      const timestampMs = Date.now();
-      readings = [
-        sourceUnavailableReading("execution", "EVENT", "EXECUTION", timestampMs),
-        sourceUnavailableReading("avail", "EVENT", "AVAILABILITY", timestampMs),
-        sourceUnavailableReading("spindle_temp", "SAMPLE", "TEMPERATURE", timestampMs),
-      ];
+    const countRaw = req.query.count;
+    let count = DEFAULT_SAMPLE_COUNT;
+    if (countRaw !== undefined) {
+      const parsed = Number(countRaw);
+      if (typeof countRaw !== "string" || countRaw.trim() === "" || !Number.isInteger(parsed) || parsed < 1) {
+        res.type("application/xml").send(errorXml("INVALID_REQUEST", `'count' must be a positive integer, got ${JSON.stringify(countRaw)}`));
+        return;
+      }
+      if (parsed > MAX_SAMPLE_COUNT) {
+        res.type("application/xml").send(errorXml("OUT_OF_RANGE", `'count' must be at most ${MAX_SAMPLE_COUNT}, got ${parsed}`));
+        return;
+      }
+      count = parsed;
     }
 
-    const { firstSequence, lastSequence } = bufferBounds();
-    if (from !== undefined && from < firstSequence) {
+    // Read (or take the cached read) first, so every decision below sees the buffer in its final state for this request.
+    await refresh();
+
+    const first = buffer.firstSequence;
+    if (from !== undefined && from < first) {
       res.type("application/xml").send(
-        mtconnectErrorXml(
-          "OUT_OF_RANGE",
-          `requested sequence ${from} is older than this agent's own retained buffer (firstSequence=${firstSequence}, instanceId=${instanceId}) - resynchronize from firstSequence`,
-        ),
+        errorXml("OUT_OF_RANGE", `requested sequence ${from} is older than this agent's retained buffer (firstSequence=${first}, instanceId=${instanceId}) - resynchronize from firstSequence`),
+      );
+      return;
+    }
+    if (from !== undefined && from > buffer.nextSequence) {
+      res.type("application/xml").send(
+        errorXml("OUT_OF_RANGE", `requested sequence ${from} is beyond nextSequence=${buffer.nextSequence} (instanceId=${instanceId}) - this agent has not produced it`),
       );
       return;
     }
 
-    // `from === lastSequence` means "nothing new since my last read" - a
-    // real, valid, empty result, not a repeat of the same data.
-    const includeContent = from === undefined || from < lastSequence;
-    const eventsXml = includeContent ? readings.filter((r) => r.category === "EVENT").map((r) => renderDataItemElement(r, lastSequence)).join("\n          ") : "";
-    const samplesXml = includeContent ? readings.filter((r) => r.category === "SAMPLE").map((r) => renderDataItemElement(r, lastSequence)).join("\n          ") : "";
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">
-  ${mtconnectHeader()}
-  <Streams>
-    <DeviceStream name="HydraNode_1" uuid="hydra-umc-node-1">
-      <ComponentStream componentId="hydra_umc_1" component="Device" name="HydraNode_1">
-        <Events>
-          ${eventsXml}
-        </Events>
-        <Samples>
-          ${samplesXml}
-        </Samples>
-      </ComponentStream>
-    </DeviceStream>
-  </Streams>
-</MTConnectStreams>
-`;
-    res.type("application/xml").send(xml);
+    const result = buffer.since(from ?? first, count);
+    res.type("application/xml").send(streamsXml(result.nextSequence, result.observations));
   });
 
   return app;
 }
 
 function main() {
+  const port = resolvePort();
+  const host = process.env.HYDRA_UMC_MTCONNECT_HOST?.trim() || "0.0.0.0";
   const app = buildApp();
   const source = process.env.HYDRA_UMC_SERVER_URL
     ? `live HYDRA-UMC-SERVER at ${process.env.HYDRA_UMC_SERVER_URL}`
-    : "FixtureMachineReader (set HYDRA_UMC_SERVER_URL for real robot data)";
-  // 0.0.0.0 keeps the adapter reachable by an MTConnect client on the network
+    : isDemo()
+      ? "FixtureMachineReader - DEMONSTRATION DATA (HYDRA_UMC_MTCONNECT_DEMO=1)"
+      : "none configured: every DataItem is UNAVAILABLE (set HYDRA_UMC_SERVER_URL for real robot data)";
+  // 0.0.0.0 keeps the agent reachable by an MTConnect client on the network
   // (that is what the standard is for); HYDRA_UMC_MTCONNECT_HOST narrows it,
   // e.g. to 127.0.0.1 when only a local reverse proxy should reach it.
-  const host = process.env.HYDRA_UMC_MTCONNECT_HOST?.trim() || "0.0.0.0";
-  app.listen(DEFAULT_PORT, host, () => {
+  const server = app.listen(port, host, () => {
     console.log("=================================================");
     console.log(` HYDRA-UMC-MTCONNECT-ADAPTER v${readPackageVersion()}`);
     console.log(" ROLE: Standardized XML/HTTP interface for machine tool monitoring");
-    console.log(` STATUS: Running on ${host}:${DEFAULT_PORT} - probe: http://localhost:${DEFAULT_PORT}/probe`);
+    console.log(` STATUS: Running on ${host}:${port} - probe: http://localhost:${port}/probe`);
     console.log(` SOURCE: ${source}`);
     console.log("=================================================");
   });
+  const shutdown = (signal: string) => {
+    console.log(`[HYDRA-UMC-MTCONNECT-ADAPTER] ${signal} received: closing`);
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 2000).unref();
+  };
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGINT", () => shutdown("SIGINT"));
 }
 
-// Only auto-start when run directly, not when imported by
-// tests/server.test.ts.
+// Only auto-start when run directly, not when imported by tests.
 const entryFile = process.argv[1] ? process.argv[1].split(/[/\\]/).pop() : "";
 if (entryFile === "server.ts" || entryFile === "server.cjs" || entryFile === "server.js") {
   main();

@@ -16,7 +16,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** unit conversion (`src/units.ts`), quality/timestamp/error-code mapping (`src/dataitem.ts`), polling/caching (`src/reader.ts`), the real HYDRA-UMC-SERVER-backed machine reader (`src/hydraServerReader.ts`), and the HTTP server (`src/server.ts`) are all real and tested (75 tests passing across 8 files, including real HTTP requests over a real listening socket via `supertest` - not just a compile check). The device model is hardcoded to exactly one HydraNode (`hydra_umc_1`) - it proves the HTTP surface and XML shape are spec-correct end to end, but a real deployment monitoring more than one robot would need to generate this from HYDRA-UMC-SERVER's own live roster, which doesn't happen yet. The emitted XML has been verified for spec-correct shape (namespaces, `Device`/`DataItem` ids, a shared `instanceId`) but has not yet been tested live against a real third-party MTConnect Agent or collector. See `CHANGELOG.md` for exactly what has shipped so far.
+**Honesty check - what actually runs today:** unit conversion (`src/units.ts`), quality/timestamp/error-code mapping (`src/dataitem.ts`), polling/caching (`src/reader.ts`), the real HYDRA-UMC-SERVER-backed machine reader (`src/hydraServerReader.ts`), and the HTTP server (`src/server.ts`) are all real and tested (100 tests passing across 9 files, including real HTTP requests over a real listening socket via `supertest` - not just a compile check). The device model is hardcoded to exactly one HydraNode (`hydra_umc_1`) - it proves the HTTP surface and XML shape are spec-correct end to end, but a real deployment monitoring more than one robot would need to generate this from HYDRA-UMC-SERVER's own live roster, which doesn't happen yet. The emitted XML has been verified for spec-correct shape (namespaces, `Device`/`DataItem` ids, a shared `instanceId`) but has not yet been tested live against a real third-party MTConnect Agent or collector. See `CHANGELOG.md` for exactly what has shipped so far.
 
 ---
 
@@ -33,7 +33,9 @@ It provides a read-only XML/HTTP interface that allows traditional industrial so
 * 🔌 **Real Machine Source:** `HydraServerMachineReader` (`src/hydraServerReader.ts`, `HYDRA_UMC_SERVER_URL`) polls a live HYDRA-UMC-SERVER's own `GET /api/settings` and reports one real robot's own `AVAILABLE`/`ACTIVE`/`INTERRUPTED`/`STOPPED`/`READY` state - not just the `FixtureMachineReader` fallback. See `docs/API.md`. *(implemented)*
 * 🔍 **Agent Compatibility:** Verified to emit spec-shaped XML (correct namespaces, consistent `Device`/`DataItem` ids, a shared `instanceId` - see `tests/server.test.ts`) - not yet tested live against a real third-party MTConnect Agent/collector.
 * 📐 **Real Unit/Quality Mapping:** Every DataItem's native unit, quality, UTC timestamp and error code are computed by a real, versioned mapping - testable without hardware. *(implemented)*
-* 🩹 **Degraded-Mode Output:** A source that's down or reports invalid data renders MTConnect's own real `UNAVAILABLE` value with an error code, not a crash or stale data. *(implemented)*
+* 🩹 **Degraded-Mode Output:** A source that's down or reports invalid data renders MTConnect's own real `UNAVAILABLE` value, not a crash or stale data; the document stays valid against the official schema. *(implemented)*
+* 🧮 **Observation Buffer:** every change of a DataItem is an observation with its own sequence number, kept in a buffer of `MTCONNECT_BUFFER_SIZE` observations; `GET /sample?from=<nextSequence>&count=<n>` returns exactly what happened since, so a client loop never loses or repeats a change. *(implemented)*
+* 🧪 **No invented data:** without `HYDRA_UMC_SERVER_URL` every DataItem is `UNAVAILABLE`; the synthetic demonstration values are served only with `HYDRA_UMC_MTCONNECT_DEMO=1`, and the device says so in its description. *(implemented)*
 
 ---
 
@@ -54,11 +56,10 @@ flowchart LR
 
 * **Why this is a sibling, not a submodule, of HYDRA-UMC-GATEWAY-INDUSTRIAL.** Each protocol adapter is a separately deployable/restartable process - an MTConnect XML-generation issue never takes down the OPC-UA or MQTT adapters running alongside it.
 * **Why a real MTConnect device/agent stream, not a generic XML export.** MTConnect-aware factory software (many CNC/MES tools) expects the specific device/agent/component schema the standard defines - a generic export would need a custom parser on the other end, defeating the point of speaking MTConnect.
-* **Why the entry point only prints identity/version, exits after a health-check listener comes up.** Andamiaje (scaffolding) stage, same reasoning as the parent's own README - a real adapter is long-running by nature.
 * **How this fits the rest of the ecosystem.** A sibling service under HYDRA-UMC-GATEWAY-INDUSTRIAL - translates HYDRA-UMC-SERVER's own state into a real MTConnect device/agent feed.
 * **Real HTTP tests, not just a compile check.** `tests/server.test.ts` uses `supertest` (a real HTTP request over a real listening socket) to verify `GET /probe` and `GET /current` return spec-shaped XML with matching namespaces, consistent `Device`/`DataItem` ids between the two documents, and a shared `instanceId`.
 * **Why unit conversion, quality classification, and reading a machine are three separate modules.** `src/units.ts` (pure conversion math), `src/dataitem.ts` (quality/timestamp/error-code mapping) and `src/reader.ts` (polling/caching a `MachineReader`) are each testable on their own, without hardware or HTTP - an explicit concern: unit-conversion bugs found through a full HTTP round trip are slow to isolate and easy to miss.
-* **Why a degraded DataItem renders MTConnect's real `UNAVAILABLE` value, not a custom error shape.** MTConnect Agents and collectors already know how to display `UNAVAILABLE` - reusing the spec's own vocabulary means a real downstream tool degrades gracefully today, not once it's taught a HYDRA-UMC-specific convention. The `errorCode` attribute (`NO_DATA`/`UNIT_CONVERSION_ERROR`/`SOURCE_UNAVAILABLE`) is this project's own v0 addition for real diagnosis, documented as such rather than presented as a standard MTConnect attribute.
+* **Why a degraded DataItem renders MTConnect's real `UNAVAILABLE` value, not a custom error shape.** MTConnect agents and clients already know how to display `UNAVAILABLE` - reusing the spec's own vocabulary means a downstream tool degrades gracefully today. The reason (no data, unit conversion, source down, stale) stays out of the document: the official schema has no attribute for it, and a validating parser rejects a document that carries an extra one.
 * **Why `CachedReader`'s polling limit is generic, not hardcoded to `spindle_temp`.** The real risk it guards against - hammering a decades-old controller with requests every time `/current` is hit - applies to `FixtureMachineReader` and the real `HydraServerMachineReader` (`src/hydraServerReader.ts`, polls a live HYDRA-UMC-SERVER's own `GET /api/settings` for real robot state) alike, so the throttle lives at the `MachineReader` interface level, not inside one DataItem's own handling.
 
 ---
@@ -71,7 +72,7 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 ├── tests/       # Vitest suite - data-item mapping, units, reader, and server behavior
 ├── docs/
 │   └── API.md   # Real HTTP endpoint reference (requests, responses, XML shape)
-├── build/       # Compiled output (npm run build)
+├── dist/       # Compiled output (npm run build)
 ├── images/      # Media and diagrams
 ├── scripts/     # Utility scripts (bump-version.mjs)
 ├── tools/       # ci_validate.py - manifest/CHANGELOG/docs validation used by CI
@@ -87,7 +88,7 @@ See [`docs/API.md`](docs/API.md) for the full HTTP endpoint reference.
 ## 🛠️ DEVELOPMENT ENVIRONMENT
 
 ### Requirements
-- [Node.js](https://nodejs.org/) (v18 or higher recommended)
+- [Node.js](https://nodejs.org/) (v20 or higher recommended)
 - npm
 
 ### Installation
@@ -119,11 +120,7 @@ buffer semantics - see `docs/API.md`).
 To report a real robot, set `HYDRA_UMC_SERVER_URL`. HYDRA-UMC-SERVER only answers `GET /api/settings` to a logged-in account, so also give the adapter a credential: `HYDRA_UMC_SERVER_TOKEN` (a token the server already issued), or `HYDRA_UMC_SERVER_USER` and `HYDRA_UMC_SERVER_PASSWORD` (the adapter logs in itself, and logs in again when the session expires). Without one the source is reported as unavailable (`SOURCE_UNAVAILABLE`). `HYDRA_UMC_MTCONNECT_HOST` narrows the listen address (default `0.0.0.0`), for example to `127.0.0.1` behind a local reverse proxy. Server responses are read up to 4 MiB.
 
 ### Versioning
-Every real `npm run build` bumps `package.json`'s own `version`
-automatically (`scripts/bump-version.mjs`, wired as the first step of the
-`build` script) - a base-10 "odometer": patch +1 per build, rolling over
-into minor (and minor into major) past 9 rather than ever reaching a
-two-digit segment (`0.0.9` -> `0.1.0`, not `0.0.10`).
+`npm run build` only bundles the server. The version is bumped by `build.sh` / `build.bat` (through `bump_manifest_version.py`), a base-10 "odometer": patch +1 per build, rolling over into minor (and minor into major) past 9 rather than ever reaching a two-digit segment (`0.0.9` -> `0.1.0`, not `0.0.10`).
 
 ---
 

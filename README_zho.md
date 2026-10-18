@@ -16,7 +16,7 @@
 
 ---
 
-**诚实核查 - 今天真正能运行的部分：** 单位换算(`src/units.ts`)、质量/时间戳/错误码映射(`src/dataitem.ts`)、轮询/缓存(`src/reader.ts`)、由真实 HYDRA-UMC-SERVER 支持的机器读取器(`src/hydraServerReader.ts`)，以及 HTTP 服务器(`src/server.ts`)都是真实的并经过测试(8 个文件共 75 个测试通过，其中包括通过 `supertest` 对一个真实监听套接字发出的真实 HTTP 请求——而不仅仅是编译检查)。设备模型被硬编码为恰好一个 HydraNode(`hydra_umc_1`)——这证明了 HTTP 接口和 XML 结构从端到端都符合规范，但一个真正监控多台机器人的部署需要根据 HYDRA-UMC-SERVER 自身的实时机器人列表来生成，而这一点目前尚未实现。所输出的 XML 已经过验证，结构符合规范(命名空间、`Device`/`DataItem` id、共享的 `instanceId`),但尚未针对真实的第三方 MTConnect Agent 或采集器进行过实际联调测试。具体已交付的内容请见 `CHANGELOG.md`。
+**诚实核查 - 今天真正能运行的部分：** 单位换算(`src/units.ts`)、质量/时间戳/错误码映射(`src/dataitem.ts`)、轮询/缓存(`src/reader.ts`)、由真实 HYDRA-UMC-SERVER 支持的机器读取器(`src/hydraServerReader.ts`)，以及 HTTP 服务器(`src/server.ts`)都是真实的并经过测试(9 个文件共 100 个测试通过，其中包括通过 `supertest` 对一个真实监听套接字发出的真实 HTTP 请求——而不仅仅是编译检查)。设备模型被硬编码为恰好一个 HydraNode(`hydra_umc_1`)——这证明了 HTTP 接口和 XML 结构从端到端都符合规范，但一个真正监控多台机器人的部署需要根据 HYDRA-UMC-SERVER 自身的实时机器人列表来生成，而这一点目前尚未实现。所输出的 XML 已经过验证，结构符合规范(命名空间、`Device`/`DataItem` id、共享的 `instanceId`),但尚未针对真实的第三方 MTConnect Agent 或采集器进行过实际联调测试。具体已交付的内容请见 `CHANGELOG.md`。
 
 ---
 
@@ -36,7 +36,9 @@
 * 🌐 **HTTP 接口：** 可通过简单的 RESTful 查询访问，便于集成。*(已实现)*
 * 🔍 **代理兼容性：** 已验证会输出符合规范形态的 XML（正确的命名空间、一致的 `Device`/`DataItem` id、共享的 `instanceId`——见 `tests/server.test.ts`）——尚未针对真实的第三方 MTConnect 代理/采集器进行实测。
 * 📐 **真实的单位/质量映射：** 每个 DataItem 的原生单位、质量、UTC 时间戳和错误代码都由一个真实的、带版本管理的映射计算得出——无需硬件即可测试。*(已实现)*
-* 🩹 **降级模式输出：** 当数据源宕机或报告无效数据时，会渲染 MTConnect 自身真实的 `UNAVAILABLE` 值并附带错误代码，而不是崩溃或陈旧数据。*(已实现)*
+* 🩹 **降级模式输出：** 当数据源宕机或报告无效数据时，会以 MTConnect 自身真实的 `UNAVAILABLE` 值呈现，而不是崩溃或过期数据；文档仍然符合官方模式。
+* 🧮 **观测缓冲区：** DataItem 的每次变化都是一条带有独立序列号的观测，保存在可容纳 `MTCONNECT_BUFFER_SIZE` 条观测的缓冲区中；`GET /sample?from=<nextSequence>&count=<n>` 只返回此后发生的内容，因此客户端循环不会丢失或重复任何变化。*(已实现)*
+* 🧪 **不编造数据：** 没有 `HYDRA_UMC_SERVER_URL` 时，所有 DataItem 均为 `UNAVAILABLE`；合成的演示数值仅在设置 `HYDRA_UMC_MTCONNECT_DEMO=1` 时提供，且设备的描述中会注明。*(已实现)*
 
 ---
 
@@ -61,7 +63,7 @@ flowchart LR
 * **这如何融入生态系统的其余部分。** 作为 HYDRA-UMC-GATEWAY-INDUSTRIAL 下的同级服务——将 HYDRA-UMC-SERVER 自身的状态转换为一个真实的 MTConnect 设备/代理数据流。
 * **真实的 HTTP 测试,而不仅仅是编译检查。** `tests/server.test.ts` 使用 `supertest`(在真实监听套接字上发出的真实 HTTP 请求)来验证 `GET /probe` 和 `GET /current` 返回符合规范形状的 XML,具有匹配的命名空间、两个文档之间一致的 `Device`/`DataItem` id,以及共享的 `instanceId`。
 * **为何单位转换、质量分类和读取机器是三个独立的模块。** `src/units.ts`（纯转换数学运算）、`src/dataitem.ts`（质量/时间戳/错误代码映射）和 `src/reader.ts`（对 `MachineReader` 进行轮询/缓存）都可以单独测试，无需硬件或 HTTP——这正是一个明确的关注点：通过完整的 HTTP 往返发现的单位转换错误既难以定位又容易被忽略。
-* **为何降级的 DataItem 渲染 MTConnect 自身真实的 `UNAVAILABLE` 值，而非自定义的错误格式。** MTConnect Agent 和采集器早已知道如何显示 `UNAVAILABLE`——复用规范自身的词汇意味着真实的下游工具今天就能优雅降级，而不必等到它被教会一种 HYDRA-UMC 专属的约定。`errorCode` 属性（`NO_DATA`/`UNIT_CONVERSION_ERROR`/`SOURCE_UNAVAILABLE`）是本项目自身为实现真实诊断而添加的 v0 扩展，作为此类附加内容予以说明，而非当作标准 MTConnect 属性呈现。
+* **为何降级的 DataItem 渲染 MTConnect 真实的 `UNAVAILABLE` 值，而不是自定义的错误形式。** MTConnect 代理和客户端本来就知道如何显示 `UNAVAILABLE`——复用规范自身的词汇，意味着下游工具今天就能平稳降级。原因（无数据、单位转换、数据源宕机、数据过期）不放入文档：官方模式没有对应属性，而带有多余属性的文档会被做校验的解析器拒绝。
 * **为何 `CachedReader` 的轮询限制是通用的，而非针对 `spindle_temp` 硬编码。** 目前该环境中还没有真实的机器数据源，但它所防范的真实风险——每次访问 `/current` 都对一台使用了几十年的控制器发起请求轰炸——适用于未来最终取代 `FixtureMachineReader` 的任何数据源，因此这个节流机制存在于 `MachineReader` 接口层面，而不是存在于单个 DataItem 自身的处理逻辑中。
 
 ---
@@ -74,7 +76,7 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 ├── tests/       # Vitest 测试套件——data item 映射、单位、reader 与服务器行为
 ├── docs/
 │   └── API.md   # 真实的 HTTP 端点参考（请求、响应、XML 结构）
-├── build/       # 编译输出（npm run build）
+├── dist/       # 编译输出（npm run build）
 ├── images/      # 媒体与图表
 ├── scripts/     # 实用脚本（bump-version.mjs）
 ├── tools/       # ci_validate.py——CI 使用的 manifest/CHANGELOG/docs 校验
@@ -90,7 +92,7 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 ## 🛠️ 开发环境
 
 ### 前提条件
-- [Node.js](https://nodejs.org/)（建议 v18 或更高版本）
+- [Node.js](https://nodejs.org/)（建议 v20 或更高版本）
 - npm
 
 ### 安装
@@ -121,11 +123,7 @@ npm start
 要报告一台真实的机器人，请设置 `HYDRA_UMC_SERVER_URL`。HYDRA-UMC-SERVER 只会对已登录的账户响应 `GET /api/settings`，因此还要给适配器提供凭据：`HYDRA_UMC_SERVER_TOKEN`（服务器已签发的令牌），或 `HYDRA_UMC_SERVER_USER` 和 `HYDRA_UMC_SERVER_PASSWORD`（适配器自行登录，并在会话过期时重新登录）。两者都没有时，数据源会被报告为不可用（`SOURCE_UNAVAILABLE`）。`HYDRA_UMC_MTCONNECT_HOST` 用来收窄监听地址（默认 `0.0.0.0`），例如在本地反向代理之后设为 `127.0.0.1`。服务器的响应最多读取 4 MiB。
 
 ### 版本管理
-每次真实的 `npm run build` 都会自动递增 `package.json` 自身的
-`version`（`scripts/bump-version.mjs`，作为 `build` 脚本的第一步接入）
-——一种十进制"里程表"方案：每次构建 patch +1，超过 9 时进位到 minor
-（minor 超过 9 时进位到 major），而不会到达两位数段（`0.0.9` ->
-`0.1.0`，而非 `0.0.10`）。
+`npm run build` 只负责打包服务器。版本由 `build.sh` / `build.bat`（通过 `bump_manifest_version.py`）递增，采用十进制"里程表"方案：每次构建 patch +1，超过 9 时进位到 minor（minor 超过 9 时进位到 major），而不会到达两位数段（`0.0.9` -> `0.1.0`，而非 `0.0.10`）。
 
 ---
 

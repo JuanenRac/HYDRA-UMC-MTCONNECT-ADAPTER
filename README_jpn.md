@@ -16,7 +16,7 @@
 
 ---
 
-**正直な現状確認 - 今日実際に動くもの:** 単位変換(`src/units.ts`)、品質/タイムスタンプ/エラーコードのマッピング(`src/dataitem.ts`)、ポーリング/キャッシュ(`src/reader.ts`)、本物の HYDRA-UMC-SERVER に基づくマシンリーダー(`src/hydraServerReader.ts`)、そして HTTP サーバー(`src/server.ts`)はすべて本物であり、テスト済みである(8 ファイルにわたり 75 件のテストが成功しており、`supertest` を使った本物のリスニングソケットに対する本物の HTTP リクエストも含まれる——単なるコンパイルチェックではない)。デバイスモデルはちょうど 1 台の HydraNode(`hydra_umc_1`)にハードコードされている——これは HTTP インターフェースと XML の形状がエンドツーエンドで仕様に正しく準拠していることを証明しているが、複数台のロボットを監視する実際のデプロイでは HYDRA-UMC-SERVER 自身のライブなロボット一覧からこれを生成する必要があり、それはまだ行われていない。出力される XML は仕様に沿った形状(名前空間、`Device`/`DataItem` の id、共有される `instanceId`)であることが検証済みだが、実際のサードパーティ製 MTConnect Agent やコレクターに対してライブでテストされたことはまだない。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
+**正直な現状確認 - 今日実際に動くもの:** 単位変換(`src/units.ts`)、品質/タイムスタンプ/エラーコードのマッピング(`src/dataitem.ts`)、ポーリング/キャッシュ(`src/reader.ts`)、本物の HYDRA-UMC-SERVER に基づくマシンリーダー(`src/hydraServerReader.ts`)、そして HTTP サーバー(`src/server.ts`)はすべて本物であり、テスト済みである(9 ファイルにわたり 100 件のテストが成功しており、`supertest` を使った本物のリスニングソケットに対する本物の HTTP リクエストも含まれる——単なるコンパイルチェックではない)。デバイスモデルはちょうど 1 台の HydraNode(`hydra_umc_1`)にハードコードされている——これは HTTP インターフェースと XML の形状がエンドツーエンドで仕様に正しく準拠していることを証明しているが、複数台のロボットを監視する実際のデプロイでは HYDRA-UMC-SERVER 自身のライブなロボット一覧からこれを生成する必要があり、それはまだ行われていない。出力される XML は仕様に沿った形状(名前空間、`Device`/`DataItem` の id、共有される `instanceId`)であることが検証済みだが、実際のサードパーティ製 MTConnect Agent やコレクターに対してライブでテストされたことはまだない。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
 
 ---
 
@@ -37,7 +37,9 @@
 * 🌐 **HTTP インターフェース：** 簡単な RESTful クエリでアクセス可能で、統合が容易です。*(実装済み)*
 * 🔍 **エージェント互換性：** 仕様どおりの形式の XML を出力することを検証済みです（正しい名前空間、一貫した `Device`/`DataItem` の id、共有された `instanceId` - `tests/server.test.ts` を参照）——実際のサードパーティ製 MTConnect エージェント/コレクターに対する実機テストはまだ行われていません。
 * 📐 **実際の単位/品質マッピング：** 各 DataItem のネイティブ単位、品質、UTC タイムスタンプ、エラーコードは、実際のバージョン管理されたマッピングによって計算されます——ハードウェアなしでテスト可能です。*(実装済み)*
-* 🩹 **デグレードモード出力：** ダウンしている、または無効なデータを報告しているソースは、クラッシュや古いデータではなく、MTConnect 自身の実際の `UNAVAILABLE` 値をエラーコード付きでレンダリングします。*(実装済み)*
+* 🩹 **デグレードモード出力：** ダウンしている、または無効なデータを報告するソースは、クラッシュや古いデータではなく MTConnect 本来の `UNAVAILABLE` 値で表現されます。ドキュメントは公式スキーマに対して有効なままです。
+* 🧮 **観測バッファ：** DataItem の変化はそれぞれ固有のシーケンス番号を持つ観測となり、`MTCONNECT_BUFFER_SIZE` 件の観測を保持するバッファに格納されます。`GET /sample?from=<nextSequence>&count=<n>` はそれ以降に起きたことだけを返すため、クライアントのループが変化を取りこぼしたり重複して受け取ることはありません。*(実装済み)*
+* 🧪 **架空のデータなし：** `HYDRA_UMC_SERVER_URL` が無い場合、すべての DataItem は `UNAVAILABLE` です。合成のデモ値は `HYDRA_UMC_MTCONNECT_DEMO=1` のときだけ提供され、デバイスの説明にもその旨が示されます。*(実装済み)*
 
 ---
 
@@ -62,7 +64,7 @@ flowchart LR
 * **エコシステムの他の部分との関係。** HYDRA-UMC-GATEWAY-INDUSTRIAL の下の兄弟サービスです——HYDRA-UMC-SERVER 自身の状態を実際の MTConnect デバイス/エージェントフィードへと変換します。
 * **コンパイルチェックだけでなく、実際のHTTPテスト。** `tests/server.test.ts` は `supertest`(実際のリスニングソケット上での実際のHTTPリクエスト)を使用して、`GET /probe` と `GET /current` が仕様どおりの形のXMLを、一致する名前空間、両ドキュメント間で一貫した `Device`/`DataItem` の id、共有された `instanceId` とともに返すことを検証します。
 * **単位変換、品質分類、マシンの読み取りが3つの独立したモジュールである理由。** `src/units.ts`（純粋な変換演算）、`src/dataitem.ts`（品質/タイムスタンプ/エラーコードのマッピング）、`src/reader.ts`（`MachineReader` のポーリング/キャッシング）は、それぞれハードウェアや HTTP なしで単独でテスト可能です——これはまさに明示的な懸念事項です。完全な HTTP 往復を通じて発見される単位変換のバグは、切り分けに時間がかかり、見落としやすいのです。
-* **デグレードした DataItem が、独自のエラー形式ではなく MTConnect 自身の実際の `UNAVAILABLE` 値をレンダリングする理由。** MTConnect のエージェントやコレクターは、すでに `UNAVAILABLE` の表示方法を知っています——仕様自身の語彙を再利用することは、HYDRA-UMC 独自の規約を教え込まれるのを待たずに、実際の下流ツールが今日から適切に劣化できることを意味します。`errorCode` 属性（`NO_DATA`/`UNIT_CONVERSION_ERROR`/`SOURCE_UNAVAILABLE`）は、実際の診断のために本プロジェクト自身が追加した v0 拡張であり、標準の MTConnect 属性として提示するのではなく、そのようなものとして文書化されています。
+* **劣化した DataItem が独自のエラー形式ではなく MTConnect 本来の `UNAVAILABLE` 値で表現される理由。** MTConnect のエージェントやクライアントは `UNAVAILABLE` の表示方法をすでに知っています。仕様自身の語彙を再利用すれば、下流のツールは今日からきれいに縮退できます。理由（データなし、単位変換、ソース停止、古いデータ）はドキュメントに含めません。公式スキーマにはそのための属性が無く、検証を行うパーサーは余分な属性を持つドキュメントを拒否するためです。
 * **`CachedReader` のポーリング上限が `spindle_temp` にハードコードされておらず、汎用的である理由。** この環境にはまだ実際のマシンソースが存在しませんが、それが防いでいる実際のリスク——`/current` が呼び出されるたびに数十年前のコントローラーにリクエストを浴びせること——は、いずれ `FixtureMachineReader` を置き換えることになるどのソースにも当てはまります。そのため、このスロットルは個々の DataItem 自身の処理の中ではなく、`MachineReader` インターフェースのレベルに存在します。
 
 ---
@@ -75,7 +77,7 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 ├── tests/       # Vitest スイート —— data item マッピング、単位、reader/サーバーの動作
 ├── docs/
 │   └── API.md   # 本物の HTTP エンドポイントリファレンス（リクエスト、レスポンス、XML 構造）
-├── build/       # コンパイル出力（npm run build）
+├── dist/       # コンパイル出力（npm run build）
 ├── images/      # メディアと図表
 ├── scripts/     # ユーティリティスクリプト（bump-version.mjs）
 ├── tools/       # ci_validate.py —— CI が使用する manifest/CHANGELOG/docs の検証
@@ -92,7 +94,7 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 ## 🛠️ 開発環境
 
 ### 必要条件
-- [Node.js](https://nodejs.org/)（v18 以上を推奨）
+- [Node.js](https://nodejs.org/)（v20 以上を推奨）
 - npm
 
 ### インストール
@@ -126,12 +128,7 @@ DataItem 値）、そして `GET http://<host>:5000/sample?from=<sequence>`
 実際のロボットを報告するには `HYDRA_UMC_SERVER_URL` を設定します。HYDRA-UMC-SERVER は `GET /api/settings` にログイン済みのアカウントにしか応答しないため、アダプターにも認証情報を渡します。`HYDRA_UMC_SERVER_TOKEN`（サーバーがすでに発行したトークン）、または `HYDRA_UMC_SERVER_USER` と `HYDRA_UMC_SERVER_PASSWORD`（アダプターが自分でログインし、セッションの有効期限が切れると再度ログインします）。どちらもない場合、ソースは利用不可（`SOURCE_UNAVAILABLE`）として報告されます。`HYDRA_UMC_MTCONNECT_HOST` は待ち受けアドレスを絞ります（既定は `0.0.0.0`）。たとえばローカルのリバースプロキシの背後なら `127.0.0.1` にします。サーバーからの応答は 4 MiB まで読み取ります。
 
 ### バージョン管理
-実際の `npm run build` のたびに、`package.json` 自身の `version` が
-自動的に増加します（`scripts/bump-version.mjs`、`build` スクリプトの
-最初のステップとして接続）——10 進法の「オドメーター」方式：ビルド
-ごとに patch を +1 し、9 を超えると minor に繰り上がり（minor が 9 を
-超えると major に繰り上がる）、2 桁のセグメントに到達することはあり
-ません（`0.0.9` -> `0.1.0`、`0.0.10` にはなりません）。
+`npm run build` はサーバーをバンドルするだけです。バージョンは `build.sh` / `build.bat`（`bump_manifest_version.py` 経由）が上げます。10 進法の「オドメーター」方式で、ビルドごとに patch を +1 し、9 を超えると minor に繰り上がり（minor が 9 を超えると major に繰り上がる）、2 桁のセグメントに到達することはありません（`0.0.9` -> `0.1.0`、`0.0.10` にはなりません）。
 
 ---
 

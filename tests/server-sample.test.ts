@@ -45,7 +45,21 @@ describe("GET /sample - real sequence coherence", () => {
     expect(sample.text).toMatch(/<Temperature[^>]*>22</);
   });
 
-  it("'from' equal to the current lastSequence returns a real, valid, EMPTY result - not a repeat", async () => {
+  it("'from' equal to the current nextSequence returns a real, valid, EMPTY result - not a repeat", async () => {
+    const { reader } = counterReader();
+    const app = buildApp({ reader, minPollIntervalMs: 60_000 });
+
+    const current = await request(app).get("/current");
+    const nextSequence = current.text.match(/nextSequence="(\d+)"/)?.[1];
+
+    const sample = await request(app).get(`/sample?from=${nextSequence}`);
+    expect(sample.status).toBe(200);
+    expect(sample.text).toContain("<MTConnectStreams");
+    expect(sample.text).not.toMatch(/<Temperature/); // nothing new since `from`
+    expect(sample.text).toContain(`nextSequence="${nextSequence}"`);
+  });
+
+  it("'from' is inclusive: the observation whose sequence is `from` is returned", async () => {
     const { reader } = counterReader();
     const app = buildApp({ reader, minPollIntervalMs: 60_000 });
 
@@ -53,9 +67,7 @@ describe("GET /sample - real sequence coherence", () => {
     const lastSequence = current.text.match(/lastSequence="(\d+)"/)?.[1];
 
     const sample = await request(app).get(`/sample?from=${lastSequence}`);
-    expect(sample.status).toBe(200);
-    expect(sample.text).toContain("<MTConnectStreams");
-    expect(sample.text).not.toMatch(/<Temperature/); // nothing new since `from` - real empty Samples
+    expect(sample.text).toMatch(new RegExp(`sequence="${lastSequence}"`));
   });
 
   it("'from' older than firstSequence gets a real MTConnectError, never a silent mix of old and new data", async () => {
@@ -97,7 +109,7 @@ describe("GET /sample - real sequence coherence", () => {
     expect(errorInstanceId).toBe(probeInstanceId);
   });
 
-  it("before any real read has ever succeeded, a Streams response honestly reports an empty buffer (firstSequence=0, lastSequence=0)", async () => {
+  it("before any real read has ever succeeded, every DataItem is UNAVAILABLE and the sequence range is a real one", async () => {
     // Real gap found while adding real XSD schema validation
     // (tests/xsd-validation.test.ts): GET /probe's own real Header shape
     // (MTConnectDevices' HeaderType) never carries sequence/buffer-position
@@ -113,8 +125,9 @@ describe("GET /sample - real sequence coherence", () => {
       },
     };
     const res = await request(buildApp({ reader: failingReader })).get("/current");
-    expect(res.text).toMatch(/firstSequence="0"/);
-    expect(res.text).toMatch(/lastSequence="0"/);
+    expect(res.text).toMatch(/firstSequence="1"/);
+    expect(res.text).toMatch(/lastSequence="4"/);
+    expect(res.text).toMatch(/<Temperature[^>]*>UNAVAILABLE</);
   });
 
   it("a real new poll advances the sequence, and 'from' at the OLD lastSequence now returns the new data", async () => {

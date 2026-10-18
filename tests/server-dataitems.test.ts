@@ -60,7 +60,7 @@ describe("GET /current - real Samples pipeline (fixture machine, mixed units)", 
     const reader = readerOf([{ id: "spindle_temp", category: "SAMPLE", type: "TEMPERATURE", nativeUnit: "CELSIUS", value: NaN, timestampMs: 1_700_000_000_000 }]);
     const res = await request(buildApp({ reader })).get("/current");
     expect(res.status).toBe(200);
-    expect(res.text).toContain('errorCode="NO_DATA"');
+    expect(res.text).not.toContain("errorCode");
     expect(res.text).toMatch(/<Temperature[^>]*>UNAVAILABLE</);
     expect(res.text).not.toContain(">NaN<");
   });
@@ -68,7 +68,7 @@ describe("GET /current - real Samples pipeline (fixture machine, mixed units)", 
   it("renders real downtime (the fixture source throws) as a degraded, still-200 MTConnect response", async () => {
     const res = await request(buildApp({ reader: failingReader() })).get("/current");
     expect(res.status).toBe(200);
-    expect(res.text).toContain('errorCode="SOURCE_UNAVAILABLE"');
+    expect(res.text).not.toContain("errorCode");
     expect(res.text).toMatch(/<Temperature[^>]*>UNAVAILABLE</);
     // The rest of the document must still be spec-shaped - a down source
     // degrades every DataItem it would have reported, not just Samples,
@@ -78,8 +78,8 @@ describe("GET /current - real Samples pipeline (fixture machine, mixed units)", 
     // Availability too, not the stale "READY"/"AVAILABLE" literals this
     // response used to hardcode regardless of the reader's own state.
     expect(res.text).toContain("<MTConnectStreams");
-    expect(res.text).toMatch(/<Execution[^>]*errorCode="SOURCE_UNAVAILABLE"[^>]*>UNAVAILABLE</);
-    expect(res.text).toMatch(/<Availability[^>]*errorCode="SOURCE_UNAVAILABLE"[^>]*>UNAVAILABLE</);
+    expect(res.text).toMatch(/<Execution [^>]*>UNAVAILABLE</);
+    expect(res.text).toMatch(/<Availability dataItemId="avail"[^>]*>UNAVAILABLE</);
   });
 });
 
