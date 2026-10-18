@@ -20,6 +20,17 @@
 
 ---
 
+## 📋 Auf einen Blick
+
+| | |
+|---|---|
+| Version | `0.1.7` |
+| Reifegrad | Etabliert |
+| Tests | 100 |
+| Technik | Node.js / Express / ANSI/MTC1.4 XML |
+| Ziel | Der Raspberry Pi CM5 einer HYDRA-UMC-Zelle |
+| Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
+
 ## 1. 🛠️ TECHNISCHER ÜBERBLICK
 
 **HYDRA-UMC-MTCONNECT-ADAPTER** ist die Legacy- und Fabrikstandard-Brücke zur Überwachung von Werkzeugmaschinen. Er implementiert das MTConnect-Protokoll (ANSI/MTC1.4) und exportiert den Roboterschwarm als einen Satz standardisierter Werkzeugmaschinen.
