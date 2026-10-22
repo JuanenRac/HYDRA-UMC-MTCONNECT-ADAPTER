@@ -27,71 +27,6 @@ All notable changes to this project are documented here.
 - **Container:** the image runs as an unprivileged user, checks its own `/probe`, installs from the lockfile and builds on Node 24.
 - Documentation: `docs/API.md` is rewritten (valid examples, the buffer, the sources), and the README no longer claims a build that bumps the version. 100 tests.
 
-## Real request timeout on the HYDRA-UMC-SERVER poll
-
-`HydraServerMachineReader.read()` used to call `fetch()` against HYDRA-UMC-SERVER's own
-`GET /api/settings` with no timeout or `AbortController` at all - a server that accepted the TCP
-connection but never wrote a response left this adapter's own poll loop stuck waiting indefinitely on
-one `read()`, instead of surfacing a real, actionable error. `read()` now aborts after a configurable
-timeout (5 seconds by default) and reports a clear message naming it, distinguishable from a genuine
-non-2xx response or connection refusal. New test proves it against a real server that deliberately
-never responds.
-
-## Documentation - Linked docs/API.md, fixed stale example values and CONTRIBUTING.md
-
-- **README (all 7 languages)** - `docs/API.md` was never actually linked from any
-  README despite existing since the "Real HTTP API reference" entry below; added
-  it to the directory-structure tree and a real, translated sentence pointing to
-  it, in all 7 languages.
-- **`docs/API.md`** - its example `Header`/`DataItem` timestamps were hardcoded
-  to a stray real-looking calendar date; replaced with the conventional
-  non-dated placeholder (the Unix epoch, `1970-01-01T00:00:00.000Z`) - real
-  output uses `new Date().toISOString()` at request time, never a fixed value. Its
-  example `version="0.0.3"` attribute was also stale (several releases behind);
-  updated to the current real version, verified live against a running instance
-  of this adapter (`GET /probe`/`GET /current` over a real HTTP request).
-- **`CONTRIBUTING.md`** - corrected three real inaccuracies: claimed this adapter
-  speaks MTConnect "over SHDR" (it doesn't - `src/server.ts` implements the
-  `GET /probe`/`GET /current` HTTP/XML surface directly, no SHDR anywhere in the
-  codebase); referenced a `schemas/` directory and a `scripts/validate_xml.py`
-  tool that do not exist in this repo; listed "Python 3.12" as a language even
-  though `src/` is 100% TypeScript (the repo's few `.py` files are ecosystem-wide
-  tooling, not part of the adapter itself). Testing guidance now points at the
-  real Vitest suite instead of a nonexistent script.
-  Documentation-only - no code changed, no version bump.
-
-## Security - Real XML escaping on GET /current
-
-- **`src/server.ts`** - fixed a real XML injection/corruption bug found on code review: every value interpolated into the
-  hand-built `/current` XML (a DataItem's `id`, `units`, `errorCode`, and
-  its own reading value) went straight into the string with zero
-  escaping. A device-reported value containing `<`, `&`, `"` or `'`
-  (a real, legitimate shape for an EVENT-category string reading, e.g. an
-  alarm/status message) would corrupt the MTConnect document for every
-  real Agent/collector parsing it, or inject XML into the response. Added
-  a proper `escapeXml()` helper (the 5 XML 1.0 predefined entities, `&`
-  escaped first) and applied it at all four interpolation points.
-  Covered by a new real HTTP regression test in
-  `tests/server-dataitems.test.ts` asserting a raw
-  `<injected>&"'` reading value is rendered fully escaped and never
-  appears unescaped in the response body.
-- Removed a handful of source-comment/doc references to a private,
-  unpublished file that should never have been cited from
-  public source - no functional change, just an accurate, self-contained
-  set of comments and docs.
-
-## Documentation - Real HTTP API reference
-
-- **`docs/API.md`** (new) - `GET /probe` and `GET /current` documented
-  from the actual `server.ts` code, including the full real XML envelope
-  each one returns and a clear callout of what's still a placeholder
-  (single hardcoded `HydraNode`, `Availability`/`Execution` not yet wired
-  to real robot state). Verified against the real test suite
-  (`tests/server.test.ts` - 4/4 passing). Documentation-only - no code
-  changed, no version bump.
-
----
-
 ## [0.1.5] - Credentials for the live machine source, bounded responses
 
 - **The live machine source could never read a real Server:** `HydraServerMachineReader` asked `GET /api/settings` with no credential, but HYDRA-UMC-SERVER only answers that route to a logged-in account, so against a real Server `/current` always reported `SOURCE_UNAVAILABLE` (the tests only ever used a fake server with no login). The reader now takes `HYDRA_UMC_SERVER_TOKEN`, or `HYDRA_UMC_SERVER_USER` and `HYDRA_UMC_SERVER_PASSWORD` (it logs in with `POST /api/login` and logs in again, once, when the session is refused with 401/403, so a long-running adapter survives the expiry of its session). Checked end to end against a real HYDRA-UMC-SERVER process: without a credential the source was unavailable, with an account `/current` reported the robot as `AVAILABLE`/`ACTIVE`.
@@ -295,3 +230,70 @@ current state of what's implemented vs. planned; no behavior changed.
 - **`package.json`** - project metadata, no runtime dependencies yet.
 - **`build.sh` / `build.bat`** - `npm install && npm run build`.
 - **`dev.sh` / `dev.bat`** - run against source directly (no build step) for local development.
+
+## Earlier history
+
+### Real request timeout on the HYDRA-UMC-SERVER poll
+
+`HydraServerMachineReader.read()` used to call `fetch()` against HYDRA-UMC-SERVER's own
+`GET /api/settings` with no timeout or `AbortController` at all - a server that accepted the TCP
+connection but never wrote a response left this adapter's own poll loop stuck waiting indefinitely on
+one `read()`, instead of surfacing a real, actionable error. `read()` now aborts after a configurable
+timeout (5 seconds by default) and reports a clear message naming it, distinguishable from a genuine
+non-2xx response or connection refusal. New test proves it against a real server that deliberately
+never responds.
+
+### Documentation - Linked docs/API.md, fixed stale example values and CONTRIBUTING.md
+
+- **README (all 7 languages)** - `docs/API.md` was never actually linked from any
+  README despite existing since the "Real HTTP API reference" entry below; added
+  it to the directory-structure tree and a real, translated sentence pointing to
+  it, in all 7 languages.
+- **`docs/API.md`** - its example `Header`/`DataItem` timestamps were hardcoded
+  to a stray real-looking calendar date; replaced with the conventional
+  non-dated placeholder (the Unix epoch, `1970-01-01T00:00:00.000Z`) - real
+  output uses `new Date().toISOString()` at request time, never a fixed value. Its
+  example `version="0.0.3"` attribute was also stale (several releases behind);
+  updated to the current real version, verified live against a running instance
+  of this adapter (`GET /probe`/`GET /current` over a real HTTP request).
+- **`CONTRIBUTING.md`** - corrected three real inaccuracies: claimed this adapter
+  speaks MTConnect "over SHDR" (it doesn't - `src/server.ts` implements the
+  `GET /probe`/`GET /current` HTTP/XML surface directly, no SHDR anywhere in the
+  codebase); referenced a `schemas/` directory and a `scripts/validate_xml.py`
+  tool that do not exist in this repo; listed "Python 3.12" as a language even
+  though `src/` is 100% TypeScript (the repo's few `.py` files are ecosystem-wide
+  tooling, not part of the adapter itself). Testing guidance now points at the
+  real Vitest suite instead of a nonexistent script.
+  Documentation-only - no code changed, no version bump.
+
+### Security - Real XML escaping on GET /current
+
+- **`src/server.ts`** - fixed a real XML injection/corruption bug found on code review: every value interpolated into the
+  hand-built `/current` XML (a DataItem's `id`, `units`, `errorCode`, and
+  its own reading value) went straight into the string with zero
+  escaping. A device-reported value containing `<`, `&`, `"` or `'`
+  (a real, legitimate shape for an EVENT-category string reading, e.g. an
+  alarm/status message) would corrupt the MTConnect document for every
+  real Agent/collector parsing it, or inject XML into the response. Added
+  a proper `escapeXml()` helper (the 5 XML 1.0 predefined entities, `&`
+  escaped first) and applied it at all four interpolation points.
+  Covered by a new real HTTP regression test in
+  `tests/server-dataitems.test.ts` asserting a raw
+  `<injected>&"'` reading value is rendered fully escaped and never
+  appears unescaped in the response body.
+- Removed a handful of source-comment/doc references to a private,
+  unpublished file that should never have been cited from
+  public source - no functional change, just an accurate, self-contained
+  set of comments and docs.
+
+### Documentation - Real HTTP API reference
+
+- **`docs/API.md`** (new) - `GET /probe` and `GET /current` documented
+  from the actual `server.ts` code, including the full real XML envelope
+  each one returns and a clear callout of what's still a placeholder
+  (single hardcoded `HydraNode`, `Availability`/`Execution` not yet wired
+  to real robot state). Verified against the real test suite
+  (`tests/server.test.ts` - 4/4 passing). Documentation-only - no code
+  changed, no version bump.
+
+---
