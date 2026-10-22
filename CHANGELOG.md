@@ -1,24 +1,6 @@
 # Changelog
 
-All notable work on **HYDRA-UMC-MTCONNECT-ADAPTER** is summarized here, newest first.
-This file intentionally omits calendar dates from individual entries.
-
-## Versioning scheme
-
-`bump_manifest_version.py` (root of the workspace) is the single owner
-of both `hydra-umc.project.json` and `package.json`'s `version` field -
-`npm run build` is deliberately compilation-only so it can never create
-drift between them. `scripts/bump-version.mjs` is a legacy native-only
-helper kept for reference; nothing in this repo calls it.
-
-It follows the ecosystem-wide base-10 "odometer" rule rather than
-semantic-versioning judgment calls:
-
-- `PATCH` +1 on every build
-- when `PATCH` would exceed 9, it resets to 0 and `MINOR` +1 instead (e.g. `0.0.9` -> `0.1.0`, never `0.0.10`)
-- the same carry cascades into `MAJOR` if `MINOR` would exceed 9
-
----
+All notable changes to this project are documented here.
 
 ## [Unreleased]
 
