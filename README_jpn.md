@@ -141,7 +141,7 @@ DataItem 値）、そして `GET http://<host>:5000/sample?from=<sequence>`
 実際のロボットを報告するには `HYDRA_UMC_SERVER_URL` を設定します。HYDRA-UMC-SERVER は `GET /api/settings` にログイン済みのアカウントにしか応答しないため、アダプターにも認証情報を渡します。`HYDRA_UMC_SERVER_TOKEN`（サーバーがすでに発行したトークン）、または `HYDRA_UMC_SERVER_USER` と `HYDRA_UMC_SERVER_PASSWORD`（アダプターが自分でログインし、セッションの有効期限が切れると再度ログインします）。どちらもない場合、ソースは利用不可（`SOURCE_UNAVAILABLE`）として報告されます。`HYDRA_UMC_MTCONNECT_HOST` は待ち受けアドレスを絞ります（既定は `0.0.0.0`）。たとえばローカルのリバースプロキシの背後なら `127.0.0.1` にします。サーバーからの応答は 4 MiB まで読み取ります。
 
 ### バージョン管理
-`npm run build` はサーバーをバンドルするだけです。バージョンは `build.sh` / `build.bat`（`bump_manifest_version.py` 経由）が上げます。10 進法の「オドメーター」方式で、ビルドごとに patch を +1 し、9 を超えると minor に繰り上がり（minor が 9 を超えると major に繰り上がる）、2 桁のセグメントに到達することはありません（`0.0.9` -> `0.1.0`、`0.0.10` にはなりません）。
+`npm run build` はサーバーをバンドルするだけです。バージョンを上げるのは `python tools/hydra_project_tool.py bump`（`bump_manifest_version.py` 経由）だけで、ビルドは変更しません。10 進法の「オドメーター」方式で、bump のたびに patch を +1 し、9 を超えると minor に繰り上がり（minor が 9 を超えると major に繰り上がる）、2 桁のセグメントに到達することはありません（`0.0.9` -> `0.1.0`、`0.0.10` にはなりません）。
 
 ---
 

@@ -133,7 +133,7 @@ buffer semantics - see `docs/API.md`).
 To report a real robot, set `HYDRA_UMC_SERVER_URL`. HYDRA-UMC-SERVER only answers `GET /api/settings` to a logged-in account, so also give the adapter a credential: `HYDRA_UMC_SERVER_TOKEN` (a token the server already issued), or `HYDRA_UMC_SERVER_USER` and `HYDRA_UMC_SERVER_PASSWORD` (the adapter logs in itself, and logs in again when the session expires). Without one the source is reported as unavailable (`SOURCE_UNAVAILABLE`). `HYDRA_UMC_MTCONNECT_HOST` narrows the listen address (default `0.0.0.0`), for example to `127.0.0.1` behind a local reverse proxy. Server responses are read up to 4 MiB.
 
 ### Versioning
-`npm run build` only bundles the server. The version is bumped by `build.sh` / `build.bat` (through `bump_manifest_version.py`), a base-10 "odometer": patch +1 per build, rolling over into minor (and minor into major) past 9 rather than ever reaching a two-digit segment (`0.0.9` -> `0.1.0`, not `0.0.10`).
+`npm run build` only bundles the server. The version is raised only by `python tools/hydra_project_tool.py bump` (through `bump_manifest_version.py`), a base-10 "odometer": patch +1 per bump, rolling over into minor (and minor into major) past 9 rather than ever reaching a two-digit segment (`0.0.9` -> `0.1.0`, not `0.0.10`).
 
 ---
 

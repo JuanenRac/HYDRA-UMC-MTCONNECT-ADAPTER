@@ -136,7 +136,7 @@ npm start
 要报告一台真实的机器人，请设置 `HYDRA_UMC_SERVER_URL`。HYDRA-UMC-SERVER 只会对已登录的账户响应 `GET /api/settings`，因此还要给适配器提供凭据：`HYDRA_UMC_SERVER_TOKEN`（服务器已签发的令牌），或 `HYDRA_UMC_SERVER_USER` 和 `HYDRA_UMC_SERVER_PASSWORD`（适配器自行登录，并在会话过期时重新登录）。两者都没有时，数据源会被报告为不可用（`SOURCE_UNAVAILABLE`）。`HYDRA_UMC_MTCONNECT_HOST` 用来收窄监听地址（默认 `0.0.0.0`），例如在本地反向代理之后设为 `127.0.0.1`。服务器的响应最多读取 4 MiB。
 
 ### 版本管理
-`npm run build` 只负责打包服务器。版本由 `build.sh` / `build.bat`（通过 `bump_manifest_version.py`）递增，采用十进制"里程表"方案：每次构建 patch +1，超过 9 时进位到 minor（minor 超过 9 时进位到 major），而不会到达两位数段（`0.0.9` -> `0.1.0`，而非 `0.0.10`）。
+`npm run build` 只负责打包服务器。版本只由 `python tools/hydra_project_tool.py bump`（通过 `bump_manifest_version.py`）提升，采用十进制"里程表"方案：每次 bump patch +1，超过 9 时进位到 minor（minor 超过 9 时进位到 major），而不会到达两位数段（`0.0.9` -> `0.1.0`，而非 `0.0.10`）。
 
 ---
 

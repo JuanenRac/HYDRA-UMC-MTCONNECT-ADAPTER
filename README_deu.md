@@ -134,7 +134,7 @@ Streaming-Puffer-Semantik - siehe `docs/API.md`) abfragen.
 Um einen echten Roboter zu melden, setzen Sie `HYDRA_UMC_SERVER_URL`. HYDRA-UMC-SERVER beantwortet `GET /api/settings` nur einem angemeldeten Konto; geben Sie dem Adapter daher auch Zugangsdaten: `HYDRA_UMC_SERVER_TOKEN` (ein vom Server bereits ausgestelltes Token) oder `HYDRA_UMC_SERVER_USER` und `HYDRA_UMC_SERVER_PASSWORD` (der Adapter meldet sich selbst an und erneut, wenn die Sitzung abläuft). Ohne eines von beiden wird die Quelle als nicht verfügbar gemeldet (`SOURCE_UNAVAILABLE`). `HYDRA_UMC_MTCONNECT_HOST` schränkt die Lauschadresse ein (Standard `0.0.0.0`), etwa auf `127.0.0.1` hinter einem lokalen Reverse-Proxy. Antworten des Servers werden bis zu 4 MiB gelesen.
 
 ### Versionierung
-`npm run build` bündelt nur den Server. Die Version wird von `build.sh` / `build.bat` (über `bump_manifest_version.py`) erhöht, ein Dezimal-"Kilometerzähler": Patch +1 pro Build, mit Übertrag auf Minor (und von Minor auf Major) nach 9, statt je ein zweistelliges Segment zu erreichen (`0.0.9` -> `0.1.0`, nicht `0.0.10`).
+`npm run build` bündelt nur den Server. Die Version wird nur von `python tools/hydra_project_tool.py bump` erhöht (über `bump_manifest_version.py`), ein Dezimal-"Kilometerzähler": Patch +1 pro Bump, mit Übertrag auf Minor (und von Minor auf Major) nach 9, statt je ein zweistelliges Segment zu erreichen (`0.0.9` -> `0.1.0`, nicht `0.0.10`).
 
 ---
 
