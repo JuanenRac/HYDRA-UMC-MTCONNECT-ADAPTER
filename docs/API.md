@@ -39,6 +39,8 @@ The static device model: the agent itself (the schema models it as a device of i
         <DataItem id="execution" category="EVENT" type="EXECUTION"/>
         <DataItem id="avail" category="EVENT" type="AVAILABILITY"/>
         <DataItem id="spindle_temp" category="SAMPLE" type="TEMPERATURE" units="CELSIUS" nativeUnits="FAHRENHEIT"/>
+        <DataItem id="asset_chg" category="EVENT" type="ASSET_CHANGED"/>
+        <DataItem id="asset_rem" category="EVENT" type="ASSET_REMOVED"/>
       </DataItems>
     </Device>
   </Devices>
@@ -46,6 +48,12 @@ The static device model: the agent itself (the schema models it as a device of i
 ```
 
 `Header@version` is the version of this agent (the package version).
+
+The device declares `ASSET_CHANGED` and `ASSET_REMOVED`, which MTConnect asks of every Device since version 1.2; it has no assets, so both stay `UNAVAILABLE`. A deployment whose reader reports more (a `CONDITION`, for example) declares it with the `extraItems` option of `buildApp()`; it then appears in this document and starts `UNAVAILABLE` like every DataItem.
+
+### One device
+
+`GET /<device>/probe`, `/<device>/current` and `/<device>/sample` answer for one device, named by its `name` (`HydraNode_1`) or its `uuid`. `/probe` keeps the Agent in the document, which the schema requires of every `Devices` element; `/current` and `/sample` leave the agent's own stream out. Any other name is a `NO_DEVICE` error. The bare routes describe the agent and the device, as before.
 
 ---
 
@@ -143,6 +151,10 @@ GET /sample?from=11          -> (nothing new yet) empty Streams, nextSequence="1
 
 ---
 
+## Conditions
+
+A `CONDITION` DataItem is served in a `<Condition>` block, one element per observation: `Normal`, `Warning`, `Fault` or `Unavailable`, carrying `dataItemId`, `timestamp`, `sequence`, the DataItem `type` and, when the source gave them, `nativeCode` and the message as text. A reader reports one with `category: "CONDITION"`, a `value` that is the level (any case) and an optional `message` and `nativeCode`; a level that is none of the four is `UNAVAILABLE`. A change of level, message or code is a new observation, a repetition is not. `Unavailable` carries no text.
+
 ## Errors
 
-`GET /sample` reports its protocol-level errors as an `MTConnectError` document (see above) - `OUT_OF_RANGE` and `INVALID_REQUEST`. Any other path (not `/probe`, `/current` or `/sample`) returns Express's default `404`. The response never announces the framework (`X-Powered-By` is off).
+`GET /sample` reports its protocol-level errors as an `MTConnectError` document (see above) - `OUT_OF_RANGE` and `INVALID_REQUEST`; the per-device routes add `NO_DEVICE`. The HTTP status of such a document is `200`, as it always was. With `HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` it is `400` (`INVALID_REQUEST`, `OUT_OF_RANGE`) or `404` (`NO_DEVICE`) and the body is the same document, which is what clients that follow the status code expect. Any other path (not `/probe`, `/current` or `/sample`) returns Express's default `404`. The response never announces the framework (`X-Powered-By` is off).

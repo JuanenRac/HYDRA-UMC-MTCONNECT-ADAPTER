@@ -16,7 +16,7 @@
 
 ---
 
-**Controllo di onestà - cosa funziona davvero oggi:** la conversione di unità (`src/units.ts`), la mappatura qualità/timestamp/codice errore (`src/dataitem.ts`), il polling/caching (`src/reader.ts`), il vero lettore di macchina basato su HYDRA-UMC-SERVER (`src/hydraServerReader.ts`), e il server HTTP (`src/server.ts`) sono tutti reali e testati (100 test superati in 9 file, incluse vere richieste HTTP su un vero socket in ascolto tramite `supertest` - non solo un controllo di compilazione). Il modello del dispositivo è fisso a esattamente un HydraNode (`hydra_umc_1`) - dimostra che la superficie HTTP e la forma XML sono corrette secondo lo spec end-to-end, ma un vero deployment che monitori più di un robot dovrebbe generare questo a partire dal reale elenco live di HYDRA-UMC-SERVER, cosa che non avviene ancora. L'XML emesso è stato verificato per una forma corretta secondo lo spec (namespace, id `Device`/`DataItem`, un `instanceId` condiviso) ma non è ancora stato testato dal vivo contro un vero Agent/collector MTConnect di terze parti. Vedi `CHANGELOG.md` per ciò che è stato consegnato esattamente finora.
+**Controllo di onestà - cosa funziona davvero oggi:** la conversione di unità (`src/units.ts`), la mappatura qualità/timestamp/codice errore (`src/dataitem.ts`), il polling/caching (`src/reader.ts`), il vero lettore di macchina basato su HYDRA-UMC-SERVER (`src/hydraServerReader.ts`), e il server HTTP (`src/server.ts`) sono tutti reali e testati (115 test superati in 10 file, incluse vere richieste HTTP su un vero socket in ascolto tramite `supertest` - non solo un controllo di compilazione). Il modello del dispositivo è fisso a esattamente un HydraNode (`hydra_umc_1`) - dimostra che la superficie HTTP e la forma XML sono corrette secondo lo spec end-to-end, ma un vero deployment che monitori più di un robot dovrebbe generare questo a partire dal reale elenco live di HYDRA-UMC-SERVER, cosa che non avviene ancora. L'XML emesso è stato verificato per una forma corretta secondo lo spec (namespace, id `Device`/`DataItem`, un `instanceId` condiviso) ma non è ancora stato testato dal vivo contro un vero Agent/collector MTConnect di terze parti. Vedi `CHANGELOG.md` per ciò che è stato consegnato esattamente finora.
 
 ---
 
@@ -28,16 +28,16 @@
 |---|---|
 | Versione | `0.1.8` |
 | Maturità | Funzionale |
-| Test | 100 |
+| Test | 115 |
 | Tecnologia | Node.js / Express / ANSI/MTC1.4 XML |
 | Destinazione | Il Raspberry Pi CM5 di una cella HYDRA-UMC |
 | Su hardware reale | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
 
 ## 1. 🛠️ PANORAMICA TECNICA
 
-**HYDRA-UMC-MTCONNECT-ADAPTER** è il bridge standard di fabbrica e legacy per il monitoraggio delle macchine utensili. Implementa il protocollo MTConnect (ANSI/MTC1.4), esponendo lo sciame robotico come un set di macchine utensili standardizzate.
+**HYDRA-UMC-MTCONNECT-ADAPTER** è il bridge standard di fabbrica e legacy per il monitoraggio delle macchine utensili. Implementa il protocollo MTConnect (documenti della versione 1.7, verificati con l'XSD ufficiale), esponendo lo sciame robotico come un set di macchine utensili standardizzate.
 
-Fornisce un'interfaccia XML/HTTP di sola lettura che consente ai software industriali tradizionali di monitorare lo stato di esecuzione, le posizioni degli strumenti e i dati dei sensori di ogni HydraNode senza la necessità di driver specializzati.
+Fornisce un'interfaccia XML/HTTP di sola lettura che consente ai software industriali tradizionali di monitorare lo stato di esecuzione, la disponibilità e la temperatura del mandrino dell'HydraNode senza la necessità di driver specializzati.
 
 ### Caratteristiche principali:
 * 🏭 **Dati macchina standardizzati:** Espone un HydraNode come dispositivo conforme a MTConnect. *(oggi fissato a esattamente un HydraNode - `hydra_umc_1` - vedi `docs/API.md`; dimostra che la superficie HTTP e la forma XML sono corrette secondo la specifica end-to-end, un deployment reale genererebbe questo dal proprio elenco di robot dal vivo di HYDRA-UMC-SERVER)*
@@ -49,6 +49,7 @@ Fornisce un'interfaccia XML/HTTP di sola lettura che consente ai software indust
 * 🩹 **Output in modalità degradata:** Una fonte non disponibile o che segnala dati non validi viene resa con il vero valore `UNAVAILABLE` di MTConnect, non come un arresto anomalo né come dati obsoleti; il documento resta valido secondo lo schema ufficiale. *(implementato)*
 * 🧮 **Buffer di osservazioni:** ogni cambiamento di un DataItem è un'osservazione con il proprio numero di sequenza, conservata in un buffer di `MTCONNECT_BUFFER_SIZE` osservazioni; `GET /sample?from=<nextSequence>&count=<n>` restituisce esattamente ciò che è successo da allora, così un ciclo client non perde né ripete mai un cambiamento. *(implementato)*
 * 🧪 **Nessun dato inventato:** senza `HYDRA_UMC_SERVER_URL` ogni DataItem è `UNAVAILABLE`; i valori sintetici di dimostrazione vengono serviti solo con `HYDRA_UMC_MTCONNECT_DEMO=1`, e il dispositivo lo dichiara nella sua descrizione. *(implementato)*
+* 🧩 **Condizioni, rotte per dispositivo e stati HTTP:** un DataItem CONDITION viene reso come Normal, Warning, Fault o Unavailable (con il suo messaggio e il codice nativo) e dichiarato in `/probe` quando il dispositivo ne ha uno; il dispositivo dichiara `ASSET_CHANGED` e `ASSET_REMOVED` (non ha asset, quindi restano UNAVAILABLE); `/HydraNode_1/probe`, `/current` e `/sample` rispondono per quel dispositivo; `HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` fa portare a un MTConnectError lo stato HTTP 400 o 404 invece di 200 (disattivato per impostazione predefinita). Tutto verificato con l'XSD ufficiale. *(implementato)*
 
 ---
 

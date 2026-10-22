@@ -33,6 +33,10 @@ export interface RawReading {
   nativeUnit?: NativeUnit;
   value: number | string | null;
   timestampMs: number;
+  /** CONDITION only: `value` is the level (normal, warning, fault or unavailable, in any case) and this is the human text. */
+  message?: string;
+  /** CONDITION only: the source's own code for the condition. */
+  nativeCode?: string;
 }
 
 /** The real, MTConnect-ready result of mapping one RawReading. */
@@ -48,6 +52,8 @@ export interface DataItemReading {
   quality: Quality;
   timestampMs: number;
   errorCode?: ErrorCode;
+  message?: string;
+  nativeCode?: string;
 }
 
 function base(raw: Pick<RawReading, "id" | "category" | "type" | "timestampMs">) {
@@ -66,6 +72,7 @@ function base(raw: Pick<RawReading, "id" | "category" | "type" | "timestampMs">)
  *   with no unit to convert) passes through as GOOD.
  */
 export function toDataItemReading(raw: RawReading): DataItemReading {
+  if (raw.category === "CONDITION") return toConditionReading(raw);
   if (raw.value === null || (typeof raw.value === "number" && !Number.isFinite(raw.value))) {
     return { ...base(raw), value: "UNAVAILABLE", quality: "UNAVAILABLE", errorCode: "NO_DATA" };
   }
@@ -81,6 +88,24 @@ export function toDataItemReading(raw: RawReading): DataItemReading {
     }
   }
   return { ...base(raw), value: String(raw.value), quality: "GOOD" };
+}
+
+export const CONDITION_LEVELS = ["NORMAL", "WARNING", "FAULT", "UNAVAILABLE"] as const;
+export type ConditionLevel = (typeof CONDITION_LEVELS)[number];
+
+/** A condition is a level plus an optional message and native code; anything that is not one of the four levels is UNAVAILABLE / NO_DATA. */
+function toConditionReading(raw: RawReading): DataItemReading {
+  const level = typeof raw.value === "string" ? raw.value.trim().toUpperCase() : "";
+  if (!(CONDITION_LEVELS as readonly string[]).includes(level) || level === "UNAVAILABLE") {
+    return { ...base(raw), value: "UNAVAILABLE", quality: "UNAVAILABLE", errorCode: "NO_DATA" };
+  }
+  return {
+    ...base(raw),
+    value: level,
+    quality: "GOOD",
+    ...(raw.message !== undefined ? { message: raw.message } : {}),
+    ...(raw.nativeCode !== undefined ? { nativeCode: raw.nativeCode } : {}),
+  };
 }
 
 /**

@@ -14,11 +14,15 @@
 export interface Observation {
   sequence: number;
   id: string;
-  category: "EVENT" | "SAMPLE";
+  category: "EVENT" | "SAMPLE" | "CONDITION";
   type: string;
-  /** The text of the observation; the literal "UNAVAILABLE" when there is no valid value. */
+  /** The text of the observation; the literal "UNAVAILABLE" when there is no valid value. For a CONDITION it is the level: NORMAL, WARNING, FAULT or UNAVAILABLE. */
   value: string;
   timestampMs: number;
+  /** CONDITION only: the human text of the condition. */
+  message?: string;
+  /** CONDITION only: the code the source itself uses for the condition. */
+  nativeCode?: string;
 }
 
 export type ObservationInput = Omit<Observation, "sequence">;
@@ -56,7 +60,7 @@ export class ObservationBuffer {
    */
   record(input: ObservationInput): Observation | null {
     const previous = this.latestById.get(input.id);
-    if (previous && previous.value === input.value) return null;
+    if (previous && previous.value === input.value && previous.message === input.message && previous.nativeCode === input.nativeCode) return null;
     const observation: Observation = { ...input, sequence: this.next++ };
     this.items.push(observation);
     if (this.items.length > this.capacity) this.items.shift();

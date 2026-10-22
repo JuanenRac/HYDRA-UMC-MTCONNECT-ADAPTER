@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- A `CONDITION` DataItem is now rendered (`Normal`, `Warning`, `Fault` or `Unavailable`, with the message and the native code) and declared in `/probe` when the device has one, instead of being dropped without a word; the output is checked against the official schema.
+- The device declares `ASSET_CHANGED` and `ASSET_REMOVED`, which MTConnect asks of every Device since 1.2; they stay `UNAVAILABLE` because the device has no assets.
+- `/HydraNode_1/probe`, `/current` and `/sample` (by name or uuid) answer for one device; another name is a `NO_DEVICE` error.
+- `HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` answers an MTConnectError with HTTP 400 or 404 instead of 200; off by default.
+- All XML is written through one helper that escapes every attribute and text and drops characters XML cannot carry.
+- The READMEs say that the documents follow version 1.7 and that the device reports execution, availability and spindle temperature (not tool positions), and count 115 tests.
 - Building no longer changes the version; raising it is the explicit `bump` command (`python tools/hydra_project_tool.py bump`). The build scripts only report the version they built, and CI fails if a build script runs a bump.
 - The banner follows the animated style of the ecosystem banners, with the name, the kind and the technologies of the project.
 - Added `tools/hydra_project_tool.py`: the same `validate`, `test`, `version`, `status` and `bump` commands in every repository. The checks run with `HYDRA_UMC_CI=1` and fail if the version changes; only `bump` changes it.

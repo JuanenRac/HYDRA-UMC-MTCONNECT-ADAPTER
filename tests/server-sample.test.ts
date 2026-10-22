@@ -126,7 +126,7 @@ describe("GET /sample - real sequence coherence", () => {
     };
     const res = await request(buildApp({ reader: failingReader })).get("/current");
     expect(res.text).toMatch(/firstSequence="1"/);
-    expect(res.text).toMatch(/lastSequence="4"/);
+    expect(res.text).toMatch(/lastSequence="6"/);
     expect(res.text).toMatch(/<Temperature[^>]*>UNAVAILABLE</);
   });
 
