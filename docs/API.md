@@ -158,3 +158,12 @@ A `CONDITION` DataItem is served in a `<Condition>` block, one element per obser
 ## Errors
 
 `GET /sample` reports its protocol-level errors as an `MTConnectError` document (see above) - `OUT_OF_RANGE` and `INVALID_REQUEST`; the per-device routes add `NO_DEVICE`. The HTTP status of such a document is `200`, as it always was. With `HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` it is `400` (`INVALID_REQUEST`, `OUT_OF_RANGE`) or `404` (`NO_DEVICE`) and the body is the same document, which is what clients that follow the status code expect. Any other path (not `/probe`, `/current` or `/sample`) returns Express's default `404`. The response never announces the framework (`X-Powered-By` is off).
+
+## SHDR output
+
+With `HYDRA_UMC_MTCONNECT_SHDR_PORT` set to a port, the adapter also listens for TCP connections speaking SHDR, the adapter-side protocol of an MTConnect agent (for example cppagent, whose `Adapters` entry points at this host and port). The address defaults to `127.0.0.1`; `HYDRA_UMC_MTCONNECT_SHDR_HOST` changes it. At most 16 clients are served.
+
+- On connect: `* shdrVersion: 2`, `* device: HydraNode_1`, then one line per DataItem with its latest value.
+- Afterwards: one line per recorded change, the same observations `/current` and `/sample` serve. The source is polled every `POLL_INTERVAL_MS` (at least 100 ms).
+- Line format: `time|dataItemId|value` with an ISO 8601 UTC time; a value that is `UNAVAILABLE` stays `UNAVAILABLE`. A condition is `time|id|LEVEL|nativeCode|||message` (`LEVEL` is NORMAL, WARNING or FAULT) or `time|id|UNAVAILABLE||||`. A pipe in a value is written `\|` and a line break becomes a space.
+- Read only: the single line a client can send is `* PING`, answered with `* PONG <milliseconds>`; every other line is ignored and cannot change a value.

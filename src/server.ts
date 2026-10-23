@@ -32,6 +32,7 @@ import { CachedReader, type MachineReader } from "./reader.js";
 import { HydraServerMachineReader } from "./hydraServerReader.js";
 import { ObservationBuffer, type Observation } from "./buffer.js";
 import { element, escapeXml } from "./xml.js";
+import { ShdrServer } from "./shdr.js";
 
 /** A non-negative integer from an environment variable; a value that is set but not one is a startup error, never a silent default. */
 export function readIntegerEnv(name: string, fallback: number, env: NodeJS.ProcessEnv = process.env): number {
@@ -236,6 +237,10 @@ export function buildApp(options: BuildAppOptions = {}): Express {
     }
   }
 
+  // main() reads the source on a timer for the SHDR output, which no HTTP request drives
+  app.locals.refresh = refresh;
+  app.locals.buffer = buffer;
+
   function streamsHeader(nextSequence: number): string {
     return `<Header creationTime="${new Date().toISOString()}" sender="HYDRA-UMC-MTCONNECT-ADAPTER" instanceId="${instanceId}" version="${readPackageVersion()}" bufferSize="${buffer.capacity}" deviceModelChangeTime="${deviceModelChangeTimeIso}" nextSequence="${nextSequence}" firstSequence="${buffer.firstSequence}" lastSequence="${buffer.lastSequence}"/>`;
   }
@@ -407,6 +412,18 @@ function main() {
   // 0.0.0.0 keeps the agent reachable by an MTConnect client on the network
   // (that is what the standard is for); HYDRA_UMC_MTCONNECT_HOST narrows it,
   // e.g. to 127.0.0.1 when only a local reverse proxy should reach it.
+  const shdrPort = readIntegerEnv("HYDRA_UMC_MTCONNECT_SHDR_PORT", 0);
+  if (shdrPort > 65_535) throw new Error(`HYDRA-UMC-MTCONNECT-ADAPTER: HYDRA_UMC_MTCONNECT_SHDR_PORT must be in 1..65535, got ${shdrPort}`);
+  if (shdrPort > 0) {
+    // SHDR for an agent such as cppagent: read only, loopback unless HYDRA_UMC_MTCONNECT_SHDR_HOST says otherwise
+    const shdr = new ShdrServer(app.locals.buffer);
+    const shdrHost = process.env.HYDRA_UMC_MTCONNECT_SHDR_HOST?.trim() || "127.0.0.1";
+    shdr.listen(shdrPort, shdrHost).then(() => console.log(`[HYDRA-UMC-MTCONNECT-ADAPTER] SHDR (read only) on ${shdrHost}:${shdrPort}`));
+    const interval = Math.max(readIntegerEnv("POLL_INTERVAL_MS", 1000), 100);
+    setInterval(() => {
+      app.locals.refresh().then(() => shdr.flush(), () => undefined);
+    }, interval).unref();
+  }
   const server = app.listen(port, host, () => {
     console.log("=================================================");
     console.log(` HYDRA-UMC-MTCONNECT-ADAPTER v${readPackageVersion()}`);

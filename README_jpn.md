@@ -16,7 +16,7 @@
 
 ---
 
-**正直な現状確認 - 今日実際に動くもの:** 単位変換(`src/units.ts`)、品質/タイムスタンプ/エラーコードのマッピング(`src/dataitem.ts`)、ポーリング/キャッシュ(`src/reader.ts`)、本物の HYDRA-UMC-SERVER に基づくマシンリーダー(`src/hydraServerReader.ts`)、そして HTTP サーバー(`src/server.ts`)はすべて本物であり、テスト済みである(10 ファイルにわたり 115 件のテストが成功しており、`supertest` を使った本物のリスニングソケットに対する本物の HTTP リクエストも含まれる——単なるコンパイルチェックではない)。デバイスモデルはちょうど 1 台の HydraNode(`hydra_umc_1`)にハードコードされている——これは HTTP インターフェースと XML の形状がエンドツーエンドで仕様に正しく準拠していることを証明しているが、複数台のロボットを監視する実際のデプロイでは HYDRA-UMC-SERVER 自身のライブなロボット一覧からこれを生成する必要があり、それはまだ行われていない。出力される XML は仕様に沿った形状(名前空間、`Device`/`DataItem` の id、共有される `instanceId`)であることが検証済みだが、実際のサードパーティ製 MTConnect Agent やコレクターに対してライブでテストされたことはまだない。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
+**正直な現状確認 - 今日実際に動くもの:** 単位変換(`src/units.ts`)、品質/タイムスタンプ/エラーコードのマッピング(`src/dataitem.ts`)、ポーリング/キャッシュ(`src/reader.ts`)、本物の HYDRA-UMC-SERVER に基づくマシンリーダー(`src/hydraServerReader.ts`)、そして HTTP サーバー(`src/server.ts`)はすべて本物であり、テスト済みである(11 ファイルにわたり 122 件のテストが成功しており、`supertest` を使った本物のリスニングソケットに対する本物の HTTP リクエストも含まれる——単なるコンパイルチェックではない)。デバイスモデルはちょうど 1 台の HydraNode(`hydra_umc_1`)にハードコードされている——これは HTTP インターフェースと XML の形状がエンドツーエンドで仕様に正しく準拠していることを証明しているが、複数台のロボットを監視する実際のデプロイでは HYDRA-UMC-SERVER 自身のライブなロボット一覧からこれを生成する必要があり、それはまだ行われていない。出力される XML は仕様に沿った形状(名前空間、`Device`/`DataItem` の id、共有される `instanceId`)であることが検証済みだが、実際のサードパーティ製 MTConnect Agent やコレクターに対してライブでテストされたことはまだない。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
 
 ---
 
@@ -28,7 +28,7 @@
 |---|---|
 | バージョン | `0.1.8` |
 | 成熟度 | 機能する |
-| テスト | 115 |
+| テスト | 122 |
 | 技術 | Node.js / Express / ANSI/MTC1.4 XML |
 | 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
@@ -54,6 +54,7 @@
 * 🧮 **観測バッファ：** DataItem の変化はそれぞれ固有のシーケンス番号を持つ観測となり、`MTCONNECT_BUFFER_SIZE` 件の観測を保持するバッファに格納されます。`GET /sample?from=<nextSequence>&count=<n>` はそれ以降に起きたことだけを返すため、クライアントのループが変化を取りこぼしたり重複して受け取ることはありません。*(実装済み)*
 * 🧪 **架空のデータなし：** `HYDRA_UMC_SERVER_URL` が無い場合、すべての DataItem は `UNAVAILABLE` です。合成のデモ値は `HYDRA_UMC_MTCONNECT_DEMO=1` のときだけ提供され、デバイスの説明にもその旨が示されます。*(実装済み)*
 * 🧩 **コンディション・デバイス別ルート・HTTP ステータス:** CONDITION の DataItem は Normal、Warning、Fault、Unavailable として(メッセージとネイティブコード付きで)出力され、デバイスが持つ場合は `/probe` で宣言されます。デバイスは `ASSET_CHANGED` と `ASSET_REMOVED` を宣言します(アセットはないので UNAVAILABLE のままです)。`/HydraNode_1/probe`、`/current`、`/sample` はそのデバイスについて応答します。`HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` は MTConnectError に 200 の代わりに HTTP 400 または 404 を付けます(既定では無効)。すべて公式 XSD で検証済みです。 *(実装済み)*
+* 🔌 **cppagent 向け SHDR 出力:** `HYDRA_UMC_MTCONNECT_SHDR_PORT` を設定すると、アダプターは同じ観測値を SHDR 行(`時刻|dataItemId|値`、コンディションは `時刻|id|レベル|ネイティブコード|||メッセージ`)として TCP でも提供し、市販の MTConnect エージェントが読み取れます。クライアントはまず各 DataItem の最新値を受け取り、その後は変更のたびに受け取ります。送信できる行は `* PING` のみで、`* PONG` が返ります。読み取り専用です。`HYDRA_UMC_MTCONNECT_SHDR_HOST` で指定しない限り `127.0.0.1` で待ち受けます。模擬エージェントでテスト済みです。 *(実装済み、実際の cppagent では未確認)*
 
 ---
 

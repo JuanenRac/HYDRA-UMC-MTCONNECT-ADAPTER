@@ -16,7 +16,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** die Einheitenumrechnung (`src/units.ts`), das Qualitäts-/Zeitstempel-/Fehlercode-Mapping (`src/dataitem.ts`), das Polling/Caching (`src/reader.ts`), der echte, auf HYDRA-UMC-SERVER gestützte Maschinen-Reader (`src/hydraServerReader.ts`) und der HTTP-Server (`src/server.ts`) sind alle real und getestet (115 bestandene Tests über 10 Dateien, einschließlich echter HTTP-Anfragen über einen echten lauschenden Socket via `supertest` - nicht nur ein Kompilierungscheck). Das Gerätemodell ist fest auf genau einen HydraNode (`hydra_umc_1`) codiert - das beweist, dass die HTTP-Oberfläche und die XML-Form Ende-zu-Ende spezifikationskonform sind, aber ein echtes Deployment, das mehr als einen Roboter überwacht, müsste dies aus dem eigenen Live-Bestand von HYDRA-UMC-SERVER generieren, was noch nicht geschieht. Das ausgegebene XML wurde auf spezifikationskonforme Form geprüft (Namespaces, `Device`/`DataItem`-IDs, eine gemeinsame `instanceId`), aber noch nicht live gegen einen echten Drittanbieter-MTConnect-Agent oder -Collector getestet. Siehe `CHANGELOG.md` für das, was bisher genau ausgeliefert wurde.
+**Ehrlichkeitscheck - was heute wirklich läuft:** die Einheitenumrechnung (`src/units.ts`), das Qualitäts-/Zeitstempel-/Fehlercode-Mapping (`src/dataitem.ts`), das Polling/Caching (`src/reader.ts`), der echte, auf HYDRA-UMC-SERVER gestützte Maschinen-Reader (`src/hydraServerReader.ts`) und der HTTP-Server (`src/server.ts`) sind alle real und getestet (122 bestandene Tests über 11 Dateien, einschließlich echter HTTP-Anfragen über einen echten lauschenden Socket via `supertest` - nicht nur ein Kompilierungscheck). Das Gerätemodell ist fest auf genau einen HydraNode (`hydra_umc_1`) codiert - das beweist, dass die HTTP-Oberfläche und die XML-Form Ende-zu-Ende spezifikationskonform sind, aber ein echtes Deployment, das mehr als einen Roboter überwacht, müsste dies aus dem eigenen Live-Bestand von HYDRA-UMC-SERVER generieren, was noch nicht geschieht. Das ausgegebene XML wurde auf spezifikationskonforme Form geprüft (Namespaces, `Device`/`DataItem`-IDs, eine gemeinsame `instanceId`), aber noch nicht live gegen einen echten Drittanbieter-MTConnect-Agent oder -Collector getestet. Siehe `CHANGELOG.md` für das, was bisher genau ausgeliefert wurde.
 
 ---
 
@@ -28,7 +28,7 @@
 |---|---|
 | Version | `0.1.8` |
 | Reifegrad | Funktionsfähig |
-| Tests | 115 |
+| Tests | 122 |
 | Technik | Node.js / Express / ANSI/MTC1.4 XML |
 | Ziel | Der Raspberry Pi CM5 einer HYDRA-UMC-Zelle |
 | Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
@@ -50,6 +50,7 @@ Er bietet eine schreibgeschützte XML/HTTP-Schnittstelle, die es herkömmlicher 
 * 🧮 **Beobachtungspuffer:** Jede Änderung eines DataItems ist eine Beobachtung mit eigener Sequenznummer, gespeichert in einem Puffer von `MTCONNECT_BUFFER_SIZE` Beobachtungen; `GET /sample?from=<nextSequence>&count=<n>` liefert genau das, was seitdem geschehen ist, sodass eine Client-Schleife nie eine Änderung verliert oder wiederholt. *(implementiert)*
 * 🧪 **Keine erfundenen Daten:** ohne `HYDRA_UMC_SERVER_URL` ist jedes DataItem `UNAVAILABLE`; die synthetischen Demowerte werden nur mit `HYDRA_UMC_MTCONNECT_DEMO=1` geliefert, und das Gerät weist in seiner Beschreibung darauf hin. *(implementiert)*
 * 🧩 **Zustände, Geräteroutien und HTTP-Status:** ein CONDITION-DataItem wird als Normal, Warning, Fault oder Unavailable ausgegeben (mit Meldung und nativem Code) und in `/probe` deklariert, wenn das Gerät eines hat; das Gerät deklariert `ASSET_CHANGED` und `ASSET_REMOVED` (es hat keine Assets, sie bleiben UNAVAILABLE); `/HydraNode_1/probe`, `/current` und `/sample` antworten für dieses Gerät; `HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` lässt einen MTConnectError HTTP 400 oder 404 statt 200 tragen (standardmäßig aus). Alles gegen das offizielle XSD geprüft. *(implementiert)*
+* 🔌 **SHDR-Ausgabe für einen cppagent:** ist `HYDRA_UMC_MTCONNECT_SHDR_PORT` gesetzt, liefert der Adapter dieselben Beobachtungen zusätzlich als SHDR-Zeilen (`Zeit|dataItemId|Wert`, Conditions als `Zeit|id|STUFE|nativerCode|||Meldung`) über TCP, sodass ein handelsüblicher MTConnect-Agent ihn lesen kann. Ein Client erhält zuerst den letzten Wert jedes DataItems, danach jede Änderung; die einzige Zeile, die er senden darf, ist `* PING`, beantwortet mit `* PONG`. Nur lesend. Er lauscht auf `127.0.0.1`, sofern `HYDRA_UMC_MTCONNECT_SHDR_HOST` nichts anderes sagt. Mit einem simulierten Agenten getestet. *(implementiert, noch nicht mit einem echten cppagent probiert)*
 
 ---
 

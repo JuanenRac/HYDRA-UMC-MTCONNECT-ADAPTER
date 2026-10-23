@@ -16,7 +16,7 @@
 
 ---
 
-**诚实核查 - 今天真正能运行的部分：** 单位换算(`src/units.ts`)、质量/时间戳/错误码映射(`src/dataitem.ts`)、轮询/缓存(`src/reader.ts`)、由真实 HYDRA-UMC-SERVER 支持的机器读取器(`src/hydraServerReader.ts`)，以及 HTTP 服务器(`src/server.ts`)都是真实的并经过测试(10 个文件共 115 个测试通过，其中包括通过 `supertest` 对一个真实监听套接字发出的真实 HTTP 请求——而不仅仅是编译检查)。设备模型被硬编码为恰好一个 HydraNode(`hydra_umc_1`)——这证明了 HTTP 接口和 XML 结构从端到端都符合规范，但一个真正监控多台机器人的部署需要根据 HYDRA-UMC-SERVER 自身的实时机器人列表来生成，而这一点目前尚未实现。所输出的 XML 已经过验证，结构符合规范(命名空间、`Device`/`DataItem` id、共享的 `instanceId`),但尚未针对真实的第三方 MTConnect Agent 或采集器进行过实际联调测试。具体已交付的内容请见 `CHANGELOG.md`。
+**诚实核查 - 今天真正能运行的部分：** 单位换算(`src/units.ts`)、质量/时间戳/错误码映射(`src/dataitem.ts`)、轮询/缓存(`src/reader.ts`)、由真实 HYDRA-UMC-SERVER 支持的机器读取器(`src/hydraServerReader.ts`)，以及 HTTP 服务器(`src/server.ts`)都是真实的并经过测试(11 个文件共 122 个测试通过，其中包括通过 `supertest` 对一个真实监听套接字发出的真实 HTTP 请求——而不仅仅是编译检查)。设备模型被硬编码为恰好一个 HydraNode(`hydra_umc_1`)——这证明了 HTTP 接口和 XML 结构从端到端都符合规范，但一个真正监控多台机器人的部署需要根据 HYDRA-UMC-SERVER 自身的实时机器人列表来生成，而这一点目前尚未实现。所输出的 XML 已经过验证，结构符合规范(命名空间、`Device`/`DataItem` id、共享的 `instanceId`),但尚未针对真实的第三方 MTConnect Agent 或采集器进行过实际联调测试。具体已交付的内容请见 `CHANGELOG.md`。
 
 ---
 
@@ -28,7 +28,7 @@
 |---|---|
 | 版本 | `0.1.8` |
 | 成熟度 | 可用 |
-| 测试 | 115 |
+| 测试 | 122 |
 | 技术栈 | Node.js / Express / ANSI/MTC1.4 XML |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
@@ -53,6 +53,7 @@
 * 🧮 **观测缓冲区：** DataItem 的每次变化都是一条带有独立序列号的观测，保存在可容纳 `MTCONNECT_BUFFER_SIZE` 条观测的缓冲区中；`GET /sample?from=<nextSequence>&count=<n>` 只返回此后发生的内容，因此客户端循环不会丢失或重复任何变化。*(已实现)*
 * 🧪 **不编造数据：** 没有 `HYDRA_UMC_SERVER_URL` 时，所有 DataItem 均为 `UNAVAILABLE`；合成的演示数值仅在设置 `HYDRA_UMC_MTCONNECT_DEMO=1` 时提供，且设备的描述中会注明。*(已实现)*
 * 🧩 **状态、按设备的路由与 HTTP 状态码：** CONDITION 类型的 DataItem 以 Normal、Warning、Fault 或 Unavailable 输出（带消息和原生代码），设备拥有时会在 `/probe` 中声明；设备声明了 `ASSET_CHANGED` 和 `ASSET_REMOVED`（它没有资产，所以保持 UNAVAILABLE）；`/HydraNode_1/probe`、`/current` 和 `/sample` 针对该设备应答；`HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` 让 MTConnectError 携带 HTTP 400 或 404 而不是 200（默认关闭）。全部已用官方 XSD 校验。 *(已实现)*
+* 🔌 **面向 cppagent 的 SHDR 输出：** 设置 `HYDRA_UMC_MTCONNECT_SHDR_PORT` 后，适配器还会通过 TCP 以 SHDR 行（`时间|dataItemId|值`，状态为 `时间|id|级别|原生代码|||消息`）提供相同的观测值，现成的 MTConnect 代理即可读取。客户端先收到每个 DataItem 的最新值，随后收到每次变化；它唯一可以发送的行是 `* PING`，回复 `* PONG`。只读。除非 `HYDRA_UMC_MTCONNECT_SHDR_HOST` 另行指定，否则监听 `127.0.0.1`。已用模拟代理测试。 *(已实现，尚未用真实 cppagent 试过)*
 
 ---
 

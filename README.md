@@ -16,7 +16,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** unit conversion (`src/units.ts`), quality/timestamp/error-code mapping (`src/dataitem.ts`), polling/caching (`src/reader.ts`), the real HYDRA-UMC-SERVER-backed machine reader (`src/hydraServerReader.ts`), and the HTTP server (`src/server.ts`) are all real and tested (115 tests passing across 10 files, including real HTTP requests over a real listening socket via `supertest` - not just a compile check). The device model is hardcoded to exactly one HydraNode (`hydra_umc_1`) - it proves the HTTP surface and XML shape are spec-correct end to end, but a real deployment monitoring more than one robot would need to generate this from HYDRA-UMC-SERVER's own live roster, which doesn't happen yet. The emitted XML has been verified for spec-correct shape (namespaces, `Device`/`DataItem` ids, a shared `instanceId`) but has not yet been tested live against a real third-party MTConnect Agent or collector. See `CHANGELOG.md` for exactly what has shipped so far.
+**Honesty check - what actually runs today:** unit conversion (`src/units.ts`), quality/timestamp/error-code mapping (`src/dataitem.ts`), polling/caching (`src/reader.ts`), the real HYDRA-UMC-SERVER-backed machine reader (`src/hydraServerReader.ts`), and the HTTP server (`src/server.ts`) are all real and tested (122 tests passing across 11 files, including real HTTP requests over a real listening socket via `supertest` - not just a compile check). The device model is hardcoded to exactly one HydraNode (`hydra_umc_1`) - it proves the HTTP surface and XML shape are spec-correct end to end, but a real deployment monitoring more than one robot would need to generate this from HYDRA-UMC-SERVER's own live roster, which doesn't happen yet. The emitted XML has been verified for spec-correct shape (namespaces, `Device`/`DataItem` ids, a shared `instanceId`) but has not yet been tested live against a real third-party MTConnect Agent or collector. See `CHANGELOG.md` for exactly what has shipped so far.
 
 ---
 
@@ -28,7 +28,7 @@
 |---|---|
 | Version | `0.1.8` |
 | Maturity | Functional |
-| Tests | 115 |
+| Tests | 122 |
 | Stack | Node.js / Express / ANSI/MTC1.4 XML |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
 | On real hardware | Not yet: no run on real hardware is recorded for this version |
@@ -50,6 +50,7 @@ It provides a read-only XML/HTTP interface that allows traditional industrial so
 * 🧮 **Observation Buffer:** every change of a DataItem is an observation with its own sequence number, kept in a buffer of `MTCONNECT_BUFFER_SIZE` observations; `GET /sample?from=<nextSequence>&count=<n>` returns exactly what happened since, so a client loop never loses or repeats a change. *(implemented)*
 * 🧪 **No invented data:** without `HYDRA_UMC_SERVER_URL` every DataItem is `UNAVAILABLE`; the synthetic demonstration values are served only with `HYDRA_UMC_MTCONNECT_DEMO=1`, and the device says so in its description. *(implemented)*
 * 🧩 **Conditions, device routes and HTTP statuses:** a CONDITION DataItem is rendered as Normal, Warning, Fault or Unavailable (with its message and native code) and is declared in `/probe` when the device has one; the device declares `ASSET_CHANGED` and `ASSET_REMOVED` (it has no assets, so they stay UNAVAILABLE); `/HydraNode_1/probe`, `/current` and `/sample` answer for that device; `HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` makes an MTConnectError carry HTTP 400 or 404 instead of 200 (off by default). All checked against the official XSD. *(implemented)*
+* 🔌 **SHDR output for a cppagent:** with `HYDRA_UMC_MTCONNECT_SHDR_PORT` set, the adapter also serves the same observations as SHDR lines (`time|dataItemId|value`, conditions as `time|id|LEVEL|nativeCode|||message`) over TCP, so an off-the-shelf MTConnect agent can read it. A client first receives the latest value of every DataItem, then each change; the only line it may send is `* PING`, answered with `* PONG`. Read only. It listens on `127.0.0.1` unless `HYDRA_UMC_MTCONNECT_SHDR_HOST` says otherwise. Tested against a simulated agent. *(implemented, not yet tried against a real cppagent)*
 
 ---
 

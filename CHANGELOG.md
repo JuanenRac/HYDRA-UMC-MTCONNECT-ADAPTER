@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- The adapter now speaks SHDR, the line protocol an MTConnect agent such as cppagent reads from an adapter. With `HYDRA_UMC_MTCONNECT_SHDR_PORT` set it serves the observations of its buffer over TCP (`time|dataItemId|value`; conditions as `time|id|LEVEL|nativeCode|||message`): the latest value of every DataItem on connect, then each change. It is read only (the one line it accepts is the `* PING` heartbeat), listens on `127.0.0.1` unless `HYDRA_UMC_MTCONNECT_SHDR_HOST` is set, and takes at most 16 clients. The source is polled on a timer for it, so values flow without any HTTP request. Tests run it against a simulated agent.
 - A `CONDITION` DataItem is now rendered (`Normal`, `Warning`, `Fault` or `Unavailable`, with the message and the native code) and declared in `/probe` when the device has one, instead of being dropped without a word; the output is checked against the official schema.
 - The device declares `ASSET_CHANGED` and `ASSET_REMOVED`, which MTConnect asks of every Device since 1.2; they stay `UNAVAILABLE` because the device has no assets.
 - `/HydraNode_1/probe`, `/current` and `/sample` (by name or uuid) answer for one device; another name is a `NO_DEVICE` error.
