@@ -107,8 +107,9 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 │   └── API.md   # 本物の HTTP エンドポイントリファレンス（リクエスト、レスポンス、XML 構造）
 ├── dist/       # コンパイル出力（npm run build）
 ├── images/      # メディアと図表
+├── schemas/     # mtconnect-1.7/: 応答の検証に使う MTConnect 1.7 の XSD スキーマ (NOTICE 付き)
 ├── scripts/     # ユーティリティスクリプト（bump-version.mjs）
-├── tools/       # ci_validate.py —— CI が使用する manifest/CHANGELOG/docs の検証
+├── tools/       # build_test.py (バージョンを変えないビルド確認)、ci_validate.py (CI が使うマニフェスト/CHANGELOG/ドキュメントの検証)、hydra_project_tool.py、共有の _doc_policy.py と _readme_parity.py
 └── README.md
 ```
 

@@ -102,8 +102,9 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 │   └── API.md   # Referencia real de endpoints HTTP (peticiones, respuestas, forma XML)
 ├── dist/       # Salida compilada (npm run build)
 ├── images/      # Medios y diagramas
+├── schemas/     # mtconnect-1.7/: los esquemas XSD de MTConnect 1.7 contra los que se validan las respuestas, con su NOTICE
 ├── scripts/     # Scripts de utilidad (bump-version.mjs)
-├── tools/       # ci_validate.py - validación de manifest/CHANGELOG/docs usada por la CI
+├── tools/       # build_test.py (comprobación de compilación sin versionar), ci_validate.py (validación de manifiesto/CHANGELOG/docs usada por la CI), hydra_project_tool.py y los compartidos _doc_policy.py y _readme_parity.py
 └── README.md
 ```
 

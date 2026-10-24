@@ -106,8 +106,9 @@ HYDRA-UMC-MTCONNECT-ADAPTER/
 │   └── API.md   # 真实的 HTTP 端点参考（请求、响应、XML 结构）
 ├── dist/       # 编译输出（npm run build）
 ├── images/      # 媒体与图表
+├── schemas/     # mtconnect-1.7/: 用于校验响应的 MTConnect 1.7 XSD 模式 (附 NOTICE)
 ├── scripts/     # 实用脚本（bump-version.mjs）
-├── tools/       # ci_validate.py——CI 使用的 manifest/CHANGELOG/docs 校验
+├── tools/       # build_test.py (不改版本的构建检查)、ci_validate.py (CI 使用的清单/CHANGELOG/文档校验)、hydra_project_tool.py,以及共享的 _doc_policy.py 和 _readme_parity.py
 └── README.md
 ```
 
