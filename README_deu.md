@@ -26,9 +26,9 @@
 
 | | |
 |---|---|
-| Version | `0.1.8` |
+| Version | `0.1.9` |
 | Reifegrad | Funktionsfähig |
-| Tests | 122 |
+| Tests | 115 |
 | Technik | Node.js / Express / ANSI/MTC1.4 XML |
 | Ziel | Der Raspberry Pi CM5 einer HYDRA-UMC-Zelle |
 | Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |

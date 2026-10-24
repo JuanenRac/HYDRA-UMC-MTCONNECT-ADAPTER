@@ -26,9 +26,9 @@
 
 | | |
 |---|---|
-| Version | `0.1.8` |
+| Version | `0.1.9` |
 | Maturity | Functional |
-| Tests | 122 |
+| Tests | 115 |
 | Stack | Node.js / Express / ANSI/MTC1.4 XML |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
 | On real hardware | Not yet: no run on real hardware is recorded for this version |

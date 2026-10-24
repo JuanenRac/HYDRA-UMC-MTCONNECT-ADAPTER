@@ -26,9 +26,9 @@
 
 | | |
 |---|---|
-| Versão | `0.1.8` |
+| Versão | `0.1.9` |
 | Maturidade | Funcional |
-| Testes | 122 |
+| Testes | 115 |
 | Tecnologia | Node.js / Express / ANSI/MTC1.4 XML |
 | Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
 | Em hardware real | Ainda não: não há registo de execução em hardware real para esta versão |
