@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The layout of the README is checked in the CI:** the validator runs `tools/universal_readme_check.py` and lists, as a warning, what differs from the universal layout of the README.
 - The standard is named as MTConnect 1.7 (the version the documents follow) in the README table of the eight languages, the manifest, the package description, the contributing guide and the banner, instead of an older edition.
 
 ## [0.1.9] - The adapter now speaks SHDR, the line protocol an MTConnect agent such
