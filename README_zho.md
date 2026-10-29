@@ -1,3 +1,9 @@
+<!-- =============================================================================
+HYDRA-UMC-MTCONNECT-ADAPTER - MTConnect probe/current/sample endpoints
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+============================================================================= -->
+
 <p align="center">
   <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-MTCONNECT-ADAPTER banner" width="100%">
 </p>
@@ -9,9 +15,12 @@
 ### 🛠️ 用于机床监控的标准化 XML/HTTP 接口
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licencia-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="MTConnect">
-  <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="XML/HTTP">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
+  <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="Standard">
+  <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="Format">
+  <img src="https://img.shields.io/badge/Tests-122%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.1.9-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
@@ -22,16 +31,20 @@
 
 > **安全与安防现状:**本生态系统不是经认证的安全系统。目前尚无硬件 E-STOP 通路,没有由固件强制执行的限位或联锁,也没有经过验证的运动指令;固件映像使用 CRC32 和共享密钥的 HMAC-SHA256 校验,而非非对称签名;TLS 与双向 TLS 均为可选项,默认关闭;自制电路板尚未组装或测试。在依赖此处任何说法来保障人身安全之前,请先阅读[安全基线](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)和[威胁模型](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)。
 
+---
+
 ## 📋 速览
 
 | | |
 |---|---|
 | 版本 | `0.1.9` |
 | 成熟度 | 可用 |
-| 测试 | 115 |
+| 测试 | 122 (`npm test`) |
 | 技术栈 | Node.js / Express / MTConnect 1.7 XML |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
+
+**跳转：** [概述](#-概述) · [架构](#-架构) · [快速开始](#-快速开始) · [测试](#-测试) · [仓库结构](#-仓库结构) · [相关项目](#-相关项目)
 
 ## 🚦 项目状态
 
@@ -42,11 +55,11 @@
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟢 | 115 项自动测试，每次变更都会运行 |
+| 测试 | 🟢 | 122 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 文档 | 🟢 | 八种语言的 README，每次变更都会与清单核对 |
 
-## 1. 🛠️ 技术概述
+## 🎯 概述
 
 **HYDRA-UMC-MTCONNECT-ADAPTER** 是用于机床监控的传统及工厂标准桥接
 服务。它实现了 MTConnect 协议（1.7 版文档，已用官方 XSD 校验），将机器人集群暴露为一组
@@ -68,9 +81,18 @@
 * 🧩 **状态、按设备的路由与 HTTP 状态码：** CONDITION 类型的 DataItem 以 Normal、Warning、Fault 或 Unavailable 输出（带消息和原生代码），设备拥有时会在 `/probe` 中声明；设备声明了 `ASSET_CHANGED` 和 `ASSET_REMOVED`（它没有资产，所以保持 UNAVAILABLE）；`/HydraNode_1/probe`、`/current` 和 `/sample` 针对该设备应答；`HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` 让 MTConnectError 携带 HTTP 400 或 404 而不是 200（默认关闭）。全部已用官方 XSD 校验。 *(已实现)*
 * 🔌 **面向 cppagent 的 SHDR 输出：** 设置 `HYDRA_UMC_MTCONNECT_SHDR_PORT` 后，适配器还会通过 TCP 以 SHDR 行（`时间|dataItemId|值`，状态为 `时间|id|级别|原生代码|||消息`）提供相同的观测值，现成的 MTConnect 代理即可读取。客户端先收到每个 DataItem 的最新值，随后收到每次变化；它唯一可以发送的行是 `* PING`，回复 `* PONG`。只读。除非 `HYDRA_UMC_MTCONNECT_SHDR_HOST` 另行指定，否则监听 `127.0.0.1`。已用模拟代理测试。 *(已实现，尚未用真实 cppagent 试过)*
 
----
+## 🧩 在 HYDRA-UMC 中的角色
 
-## 2. 🔄 MTConnect 数据流
+**HYDRA-UMC-MTCONNECT-ADAPTER** 把机器人以 MTConnect 设备的形式呈现给工厂监控软件：通过 HTTP 提供只读 XML（`/probe`、`/current`、`/sample`），数据来自 `HYDRA-UMC-SERVER`。它不会向任何机器发送命令。
+
+## 🏛️ 架构
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC-MTCONNECT-ADAPTER architecture" width="100%">
+</p>
+
+<details>
+<summary>图表的文本版本（Mermaid）</summary>
 
 ```mermaid
 flowchart LR
@@ -81,9 +103,9 @@ flowchart LR
     HTTP --> MONITOR["Industrial Monitor / ERP"]
 ```
 
----
+</details>
 
-## 3. 🧱 架构与设计决策
+### 架构与设计决策
 
 * **为何这是 HYDRA-UMC-GATEWAY-INDUSTRIAL 的兄弟项目，而非子模块。** 每个协议适配器都是可独立部署/重启的进程——一次 MTConnect XML 生成问题永远不会导致与其并行运行的 OPC-UA 或 MQTT 适配器宕机。
 * **为何是一个真实的 MTConnect 设备/代理流，而非通用的 XML 导出。** 支持 MTConnect 的工厂软件（许多 CNC/MES 工具）期望该标准所定义的特定设备/代理/组件模式——通用导出会需要在另一端使用自定义解析器，从而完全违背了使用 MTConnect 协议的初衷。
@@ -94,31 +116,25 @@ flowchart LR
 * **为何降级的 DataItem 渲染 MTConnect 真实的 `UNAVAILABLE` 值，而不是自定义的错误形式。** MTConnect 代理和客户端本来就知道如何显示 `UNAVAILABLE`——复用规范自身的词汇，意味着下游工具今天就能平稳降级。原因（无数据、单位转换、数据源宕机、数据过期）不放入文档：官方模式没有对应属性，而带有多余属性的文档会被做校验的解析器拒绝。
 * **为何 `CachedReader` 的轮询限制是通用的，而非针对 `spindle_temp` 硬编码。** 目前该环境中还没有真实的机器数据源，但它所防范的真实风险——每次访问 `/current` 都对一台使用了几十年的控制器发起请求轰炸——适用于未来最终取代 `FixtureMachineReader` 的任何数据源，因此这个节流机制存在于 `MachineReader` 接口层面，而不是存在于单个 DataItem 自身的处理逻辑中。
 
----
+## 🚀 快速开始
 
-## 📂 目录结构
+需要 Node.js 20 或更高版本及 npm。
 
-```text
-HYDRA-UMC-MTCONNECT-ADAPTER/
-├── src/         # 源代码（Node/TypeScript —— 适配器、映射器、HTTP）
-├── tests/       # Vitest 测试套件——data item 映射、单位、reader 与服务器行为
-├── docs/
-│   └── API.md   # 真实的 HTTP 端点参考（请求、响应、XML 结构）
-├── dist/       # 编译输出（npm run build）
-├── images/      # 媒体与图表
-├── schemas/     # mtconnect-1.7/: 用于校验响应的 MTConnect 1.7 XSD 模式 (附 NOTICE)
-├── scripts/     # 实用脚本（bump-version.mjs）
-├── tools/       # build_test.py (不改版本的构建检查)、ci_validate.py (CI 使用的清单/CHANGELOG/文档校验)、hydra_project_tool.py,以及共享的 _doc_policy.py 和 _readme_parity.py
-└── README.md
+```bash
+npm install
+npm test
+npm run build
+npm start
+curl http://127.0.0.1:5000/probe
 ```
 
-纯网络服务，没有自己专属的硬件——`hardware/`、`firmware/` 和 `os/`
-已根据仓库结构策略从项目模板中省略。完整的 HTTP 端点参考见
-[`docs/API.md`](docs/API.md)。
+## 🧪 测试
 
----
+运行 `npm test` 会执行 122 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
 
-## 🛠️ 开发环境
+CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
+
+## 🏗️ 构建与发布
 
 ### 前提条件
 - [Node.js](https://nodejs.org/)（建议 v20 或更高版本）
@@ -152,17 +168,52 @@ npm start
 要报告一台真实的机器人，请设置 `HYDRA_UMC_SERVER_URL`。HYDRA-UMC-SERVER 只会对已登录的账户响应 `GET /api/settings`，因此还要给适配器提供凭据：`HYDRA_UMC_SERVER_TOKEN`（服务器已签发的令牌），或 `HYDRA_UMC_SERVER_USER` 和 `HYDRA_UMC_SERVER_PASSWORD`（适配器自行登录，并在会话过期时重新登录）。两者都没有时，数据源会被报告为不可用（`SOURCE_UNAVAILABLE`）。`HYDRA_UMC_MTCONNECT_HOST` 用来收窄监听地址（默认 `0.0.0.0`），例如在本地反向代理之后设为 `127.0.0.1`。服务器的响应最多读取 4 MiB。
 
 ### 版本管理
-`npm run build` 只负责打包服务器。版本只由 `python tools/hydra_project_tool.py bump`（通过 `bump_manifest_version.py`）提升，采用十进制"里程表"方案：每次 bump patch +1，超过 9 时进位到 minor（minor 超过 9 时进位到 major），而不会到达两位数段（`0.0.9` -> `0.1.0`，而非 `0.0.10`）。
+`npm run build` 只负责打包服务器。版本只由 `python tools/hydra_project_tool.py bump`（通过 `bump_manifest_version.py`）提升。
 
----
+## 📂 仓库结构
 
-## 🚀 路线图
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC-MTCONNECT-ADAPTER" width="100%">
+</p>
+
+<details>
+<summary>目录树的文本版本</summary>
+
+```text
+HYDRA-UMC-MTCONNECT-ADAPTER/
+├── src/                       源代码（Node/TypeScript —— 适配器、映射器、HTTP）
+├── tests/                     Vitest 测试套件——data item 映射、单位、reader 与服务器行为
+├── docs/                      项目文档
+├── images/                    媒体与图表
+├── schemas/                   mtconnect-1.7/: 用于校验响应的 MTConnect 1.7 XSD 模式 (附 NOTICE)
+├── scripts/                   实用脚本（bump-version.mjs）
+├── tools/                     build_test.py (不改版本的构建检查)、ci_validate.py (CI 使用的清单/CHANGELOG/文档校验)、hydra_project_tool.py,以及共享的 _doc_policy.py 和 _readme_parity.py
+├── .github/                   CI 工作流和 Issue 模板
+├── CHANGELOG.md               每个版本的变更
+├── Dockerfile                 容器镜像
+├── build-test.sh              不修改内容的构建检查
+├── build.sh                   构建并检查；从不改变版本
+├── bump_manifest_version.py   同步清单版本
+├── dev.sh                     开发模式
+├── hydra-umc.project.json     清单：版本、成熟度、系列
+├── package.json               包的元数据和脚本
+└── test.sh                    运行测试
+```
+
+</details>
+
+## 🗺️ 路线图与已知限制
+
+**当前已知限制**
+
 * **第一阶段：** OPC-UA 发布/订阅实现，用于高速数据交换和传统协议桥接。
 * **第二阶段：** 用于海量 IoT 设备管理和高并发的 MQTT Broker 集群。
 * **第三阶段：** MTConnect 适配器支持，用于多厂商 CNC 和 PLC 机械集成。
 * **第四阶段：** 支持 MTConnect 多设备聚合以及标准化的 XML/HTTP 遥测流。
 
----
+## 🌍 语言
+
+本 README 和仓库文档提供八种语言：英语、西班牙语、德语、法语、意大利语、日语、中文和葡萄牙语（葡萄牙）。它们同时编写，并由 CI 检查八个文件拥有相同的章节和相同的链接。 本仓库没有自己的界面或消息目录，因此没有需要翻译的界面文字。
 
 ## 🔗 相关项目
 
@@ -255,22 +306,27 @@ npm start
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — 维护事件协调器：一个低权限的边缘角色采集经过脱敏的库存/健康快照，一个控制面角色以只读方式渲染它，并请求某个 AI 提供方给出诊断建议——从不应用补丁，也从不部署任何内容。
 - **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — 可复现的开发主机（Raspberry Pi 5 / CM5），保存整个生态系统的源代码，并在持久队列下运行有界的构建/测试任务；这是专用的开发角色，明确区别于运行中的 CM5。
 
+## 📚 文档
 
----
+更多阅读：
 
-## 📚 文档与社区
+* **[docs/API.md](docs/API.md)** —— 真实的 HTTP 端点参考文档：`GET /probe`/`GET /current`/`GET /sample` 的请求/响应形态、完整的 XML 报文示例、两种真实的 `MachineReader` 实现(`FixtureMachineReader`/`HydraServerMachineReader`),以及对仍属占位实现部分的明确说明(唯一固定的 HydraNode——按机器人划分的动态设备树是另一项更大的独立工作)。
+* [生态系统的安全基线](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [生态系统的威胁模型](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [本仓库的更新日志](CHANGELOG.md)
+* [本仓库的许可证](LICENSE.md)
 
-- **[docs/API.md](docs/API.md)** —— 真实的 HTTP 端点参考文档：`GET /probe`/`GET /current`/`GET /sample` 的请求/响应形态、完整的 XML 报文示例、两种真实的 `MachineReader` 实现(`FixtureMachineReader`/`HydraServerMachineReader`),以及对仍属占位实现部分的明确说明(唯一固定的 HydraNode——按机器人划分的动态设备树是另一项更大的独立工作)。
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** —— 提交 Pull Request 所需的技术栈和编码规范。
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— 本社区所期望的行为准则。
-- **[SECURITY.md](SECURITY.md)** —— 如何报告漏洞，以及本项目真实的安全关注重点。
-- **[SUPPORT.md](SUPPORT.md)** —— 在哪里提问和报告缺陷。
-- **[LICENSE.md](LICENSE.md)** —— 本项目自身的许可证。
+## 🤝 参与贡献与社区
+
+* 提交 pull request 之前，请运行 `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py`（或 `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`）：它必须输出 `CI_VALIDATION=PASS`。此检查不要运行 `build.sh` 或 `build.bat`；构建不是检查。
+* 八个 README 由 HYDRA-UMC-DOCS 中的同一个源生成；请勿手工编辑。修改源文件，再用 `tools/make_readmes.py` 重新生成。
+* 不要在 README 中声称尚未运行过的内容：属实时请写“仅模拟”或“尚未在硬件上试过”。
+* 请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)、[行为准则](CODE_OF_CONDUCT.md)、[SECURITY.md](SECURITY.md) 和 [SUPPORT.md](SUPPORT.md)。
 
 ## 👤 作者
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 许可证
-GPL-3.0-or-later —— 详见 LICENSE。
+
+GPL-3.0-or-later - [LICENSE](LICENSE).

@@ -1,0 +1,134 @@
+{
+  "repo": "HYDRA-UMC-MTCONNECT-ADAPTER",
+  "ecosystem": "hydra",
+  "tagline": "Robot state in, MTConnect XML out; read-only in both directions.",
+  "description": "HYDRA-UMC-MTCONNECT-ADAPTER reads the state of a robot from HYDRA-UMC-SERVER, keeps a sequence buffer and answers /probe, /current and /sample with MTConnect XML.",
+  "columns": [
+    "WHO USES IT",
+    "THIS REPOSITORY",
+    "DATA SOURCE"
+  ],
+  "nodes": [
+    {
+      "id": "mon",
+      "column": 0,
+      "level": "external",
+      "title": "MTConnect agents",
+      "lines": [
+        "and factory monitoring",
+        "software"
+      ]
+    },
+    {
+      "id": "srv",
+      "column": 1,
+      "level": "tested",
+      "title": "server.ts",
+      "lines": [
+        "GET /probe, /current,",
+        "/sample on port 5000"
+      ],
+      "code": [
+        "src/server.ts"
+      ]
+    },
+    {
+      "id": "xml",
+      "column": 1,
+      "level": "tested",
+      "title": "xml.ts / dataitem.ts",
+      "lines": [
+        "MTConnect 1.7 documents,",
+        "checked against the XSD"
+      ],
+      "code": [
+        "src/xml.ts",
+        "src/dataitem.ts"
+      ]
+    },
+    {
+      "id": "buf",
+      "column": 1,
+      "level": "tested",
+      "title": "buffer.ts",
+      "lines": [
+        "sequence buffer with",
+        "honest /sample semantics"
+      ],
+      "code": [
+        "src/buffer.ts"
+      ]
+    },
+    {
+      "id": "rd",
+      "column": 1,
+      "level": "tested",
+      "title": "hydraServerReader.ts",
+      "lines": [
+        "reads the robot state",
+        "and degrades honestly"
+      ],
+      "code": [
+        "src/hydraServerReader.ts",
+        "src/reader.ts"
+      ]
+    },
+    {
+      "id": "hs",
+      "column": 2,
+      "level": "external",
+      "title": "HYDRA-UMC-SERVER",
+      "lines": [
+        "REST state of a robot"
+      ]
+    },
+    {
+      "id": "shdr",
+      "column": 2,
+      "level": "config",
+      "title": "SHDR",
+      "lines": [
+        "line format of the legacy",
+        "adapter protocol"
+      ],
+      "code": [
+        "src/shdr.ts"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "mon",
+      "to": "srv",
+      "level": "tested",
+      "label": "HTTP GET"
+    },
+    {
+      "from": "srv",
+      "to": "xml",
+      "level": "tested"
+    },
+    {
+      "from": "srv",
+      "to": "buf",
+      "level": "tested"
+    },
+    {
+      "from": "rd",
+      "to": "buf",
+      "level": "tested"
+    },
+    {
+      "from": "rd",
+      "to": "hs",
+      "level": "external",
+      "label": "REST"
+    },
+    {
+      "from": "rd",
+      "to": "shdr",
+      "level": "config"
+    }
+  ],
+  "footer": "Checked against the official XSD; never connected to a real machine tool."
+}

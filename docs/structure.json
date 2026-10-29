@@ -1,0 +1,348 @@
+{
+  "repo": "HYDRA-UMC-MTCONNECT-ADAPTER",
+  "ecosystem": "hydra",
+  "svg": "en",
+  "exempt": [
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "SUPPORT.md",
+    "LICENSE",
+    "LICENSE.md",
+    "build-test.bat",
+    "build.bat",
+    "dev.bat",
+    "package-lock.json",
+    "test.bat",
+    "tsconfig.json"
+  ],
+  "cards": [
+    {
+      "name": {
+        "en": "folders",
+        "es": "carpetas",
+        "de": "Ordner",
+        "fr": "dossiers",
+        "it": "cartelle",
+        "ja": "フォルダ",
+        "zh": "文件夹",
+        "pt": "pastas"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "b",
+      "columns": 2,
+      "rows": [
+        {
+          "name": "src/",
+          "desc": {
+            "en": "Source code (Node/TypeScript",
+            "es": "Código fuente (Node/TypeScript",
+            "de": "Quellcode (Node/TypeScript",
+            "fr": "Code source (Node/TypeScript",
+            "it": "Codice sorgente",
+            "ja": "ソースコード（Node/TypeScript",
+            "zh": "源代码（Node/TypeScript",
+            "pt": "Código-fonte (Node/TypeScript"
+          },
+          "tree_desc": {
+            "en": "Source code (Node/TypeScript - Adapter, Mapper, HTTP)",
+            "es": "Código fuente (Node/TypeScript - Adaptador, Mapeador, HTTP)",
+            "de": "Quellcode (Node/TypeScript - Adapter, Mapper, HTTP)",
+            "fr": "Code source (Node/TypeScript - Adaptateur, Mappeur, HTTP)",
+            "it": "Codice sorgente (Node/TypeScript - Adattatore, Mapper, HTTP)",
+            "ja": "ソースコード（Node/TypeScript —— アダプター、マッパー、HTTP）",
+            "zh": "源代码（Node/TypeScript —— 适配器、映射器、HTTP）",
+            "pt": "Código-fonte (Node/TypeScript - Adapter, Mapper, HTTP)"
+          }
+        },
+        {
+          "name": "tests/",
+          "desc": {
+            "en": "Vitest suite - data-item mapping",
+            "es": "Suite Vitest - mapeo de data items",
+            "de": "Vitest-Suite - Data-Item-Mapping",
+            "fr": "Suite Vitest - mappage des data items",
+            "it": "Suite Vitest - mapping dei data item",
+            "ja": "Vitest スイート —— data it",
+            "zh": "Vitest 测试套件——data item",
+            "pt": "Suite Vitest - mapeamento de data items"
+          },
+          "tree_desc": {
+            "en": "Vitest suite - data-item mapping, units, reader, and server behavior",
+            "es": "Suite Vitest - mapeo de data items, unidades, reader y comportamiento del servidor",
+            "de": "Vitest-Suite - Data-Item-Mapping, Einheiten, Reader- und Server-Verhalten",
+            "fr": "Suite Vitest - mappage des data items, unités, comportement du reader et du serveur",
+            "it": "Suite Vitest - mapping dei data item, unità, comportamento di reader e server",
+            "ja": "Vitest スイート —— data item マッピング、単位、reader/サーバーの動作",
+            "zh": "Vitest 测试套件——data item 映射、单位、reader 与服务器行为",
+            "pt": "Suite Vitest - mapeamento de data items, unidades, leitor e comportamento do servidor"
+          }
+        },
+        {
+          "name": "docs/",
+          "desc": {
+            "en": "documents of the project",
+            "es": "documentos del proyecto",
+            "de": "Dokumente des Projekts",
+            "fr": "documents du projet",
+            "it": "documenti del progetto",
+            "ja": "プロジェクトの文書",
+            "zh": "项目文档",
+            "pt": "documentos do projeto"
+          },
+          "tree_desc": {
+            "en": "documents of the project",
+            "es": "documentos del proyecto",
+            "de": "Dokumente des Projekts",
+            "fr": "documents du projet",
+            "it": "documenti del progetto",
+            "ja": "プロジェクトの文書",
+            "zh": "项目文档",
+            "pt": "documentos do projeto"
+          }
+        },
+        {
+          "name": "images/",
+          "desc": {
+            "en": "Media and diagrams",
+            "es": "Medios y diagramas",
+            "de": "Medien und Diagramme",
+            "fr": "Médias et diagrammes",
+            "it": "Media e diagrammi",
+            "ja": "メディアと図表",
+            "zh": "媒体与图表",
+            "pt": "Multimédia e diagramas"
+          },
+          "tree_desc": {
+            "en": "Media and diagrams",
+            "es": "Medios y diagramas",
+            "de": "Medien und Diagramme",
+            "fr": "Médias et diagrammes",
+            "it": "Media e diagrammi",
+            "ja": "メディアと図表",
+            "zh": "媒体与图表",
+            "pt": "Multimédia e diagramas"
+          }
+        },
+        {
+          "name": "schemas/",
+          "desc": {
+            "en": "mtconnect-1.7/",
+            "es": "mtconnect-1.7/",
+            "de": "mtconnect-1.7/",
+            "fr": "mtconnect-1.7/",
+            "it": "mtconnect-1.7/",
+            "ja": "mtconnect-1.7/",
+            "zh": "mtconnect-1.7/",
+            "pt": "mtconnect-1.7/"
+          },
+          "tree_desc": {
+            "en": "mtconnect-1.7/: the MTConnect 1.7 XSD schemas that the responses are validated against, with their NOTICE",
+            "es": "mtconnect-1.7/: los esquemas XSD de MTConnect 1.7 contra los que se validan las respuestas, con su NOTICE",
+            "de": "mtconnect-1.7/: die MTConnect-1.7-XSD-Schemas, gegen die die Antworten geprüft werden, mit ihrer NOTICE",
+            "fr": "mtconnect-1.7/ : les schémas XSD de MTConnect 1.7 contre lesquels les réponses sont validées, avec leur NOTICE",
+            "it": "mtconnect-1.7/: gli schemi XSD di MTConnect 1.7 rispetto ai quali si validano le risposte, con la loro NOTICE",
+            "ja": "mtconnect-1.7/: 応答の検証に使う MTConnect 1.7 の XSD スキーマ (NOTICE 付き)",
+            "zh": "mtconnect-1.7/: 用于校验响应的 MTConnect 1.7 XSD 模式 (附 NOTICE)",
+            "pt": "mtconnect-1.7/: os esquemas XSD do MTConnect 1.7 contra os quais as respostas são validadas, com a sua NOTICE"
+          }
+        },
+        {
+          "name": "scripts/",
+          "desc": {
+            "en": "Utility scripts (bump-version.mjs)",
+            "es": "Scripts de utilidad (bump-version.mjs)",
+            "de": "Utility-Skripte (bump-version.mjs)",
+            "fr": "Scripts utilitaires (bump-version.mjs)",
+            "it": "Script di utilità (bump-version.mjs)",
+            "ja": "ユーティリティスクリプト（bump-vers",
+            "zh": "实用脚本（bump-version.mjs）",
+            "pt": "Scripts utilitários (bump-version.mjs)"
+          },
+          "tree_desc": {
+            "en": "Utility scripts (bump-version.mjs)",
+            "es": "Scripts de utilidad (bump-version.mjs)",
+            "de": "Utility-Skripte (bump-version.mjs)",
+            "fr": "Scripts utilitaires (bump-version.mjs)",
+            "it": "Script di utilità (bump-version.mjs)",
+            "ja": "ユーティリティスクリプト（bump-version.mjs）",
+            "zh": "实用脚本（bump-version.mjs）",
+            "pt": "Scripts utilitários (bump-version.mjs)"
+          }
+        },
+        {
+          "name": "tools/",
+          "desc": {
+            "en": "build_test.py (non-versioning build check)",
+            "es": "build_test.py (comprobación de compilación",
+            "de": "build_test.py (Build-Prüfung ohne",
+            "fr": "build_test.py (contrôle de build sans",
+            "it": "build_test.py (controllo di build senza",
+            "ja": "build_test.py (バージョンを変",
+            "zh": "build_test.py (不改版本的构建",
+            "pt": "build_test.py (verificação de compilação"
+          },
+          "tree_desc": {
+            "en": "build_test.py (non-versioning build check), ci_validate.py (manifest/CHANGELOG/docs validation used by CI), hydra_project_tool.py, and the shared _doc_policy.py and _readme_parity.py",
+            "es": "build_test.py (comprobación de compilación sin versionar), ci_validate.py (validación de manifiesto/CHANGELOG/docs usada por la CI), hydra_project_tool.py y los compartidos _doc_policy.py y _readme_parity.py",
+            "de": "build_test.py (Build-Prüfung ohne Versionierung), ci_validate.py (Manifest-/CHANGELOG-/Doku-Validierung der CI), hydra_project_tool.py und die gemeinsamen _doc_policy.py und _readme_parity.py",
+            "fr": "build_test.py (contrôle de build sans version), ci_validate.py (validation manifeste/CHANGELOG/docs utilisée par la CI), hydra_project_tool.py et les partagés _doc_policy.py et _readme_parity.py",
+            "it": "build_test.py (controllo di build senza versionamento), ci_validate.py (validazione manifest/CHANGELOG/docs usata dalla CI), hydra_project_tool.py e i condivisi _doc_policy.py e _readme_parity.py",
+            "ja": "build_test.py (バージョンを変えないビルド確認)、ci_validate.py (CI が使うマニフェスト/CHANGELOG/ドキュメントの検証)、hydra_project_tool.py、共有の _doc_policy.py と _readme_parity.py",
+            "zh": "build_test.py (不改版本的构建检查)、ci_validate.py (CI 使用的清单/CHANGELOG/文档校验)、hydra_project_tool.py,以及共享的 _doc_policy.py 和 _readme_parity.py",
+            "pt": "build_test.py (verificação de compilação sem versionar), ci_validate.py (validação de manifesto/CHANGELOG/docs usada pela CI), hydra_project_tool.py e os partilhados _doc_policy.py e _readme_parity.py"
+          }
+        },
+        {
+          "name": ".github/",
+          "desc": {
+            "en": "CI workflow and issue templates",
+            "es": "flujo de CI y plantillas de incidencias",
+            "de": "CI-Workflow und Issue-Vorlagen",
+            "fr": "workflow de CI et modèles de tickets",
+            "it": "workflow di CI e modelli di segnalazione",
+            "ja": "CI ワークフローと Issue テンプレート",
+            "zh": "CI 工作流和 Issue 模板",
+            "pt": "fluxo de CI e modelos de problemas"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "project files",
+        "es": "ficheros del proyecto",
+        "de": "Projektdateien",
+        "fr": "fichiers du projet",
+        "it": "file del progetto",
+        "ja": "プロジェクトのファイル",
+        "zh": "项目文件",
+        "pt": "ficheiros do projeto"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "c",
+      "columns": 2,
+      "rows": [
+        {
+          "name": "CHANGELOG.md",
+          "desc": {
+            "en": "what changed in each version",
+            "es": "qué cambió en cada versión",
+            "de": "was sich in jeder Version geändert hat",
+            "fr": "ce qui a changé à chaque version",
+            "it": "cosa è cambiato in ogni versione",
+            "ja": "各バージョンの変更点",
+            "zh": "每个版本的变更",
+            "pt": "o que mudou em cada versão"
+          }
+        },
+        {
+          "name": "Dockerfile",
+          "desc": {
+            "en": "container image",
+            "es": "imagen de contenedor",
+            "de": "Container-Image",
+            "fr": "image de conteneur",
+            "it": "immagine del container",
+            "ja": "コンテナイメージ",
+            "zh": "容器镜像",
+            "pt": "imagem de contentor"
+          }
+        },
+        {
+          "name": "build-test.sh",
+          "desc": {
+            "en": "non-mutating build check",
+            "es": "comprobación de compilación sin cambios",
+            "de": "Build-Prüfung ohne Änderungen",
+            "fr": "vérification de build sans modification",
+            "it": "controllo di build senza modifiche",
+            "ja": "変更を伴わないビルド確認",
+            "zh": "不修改内容的构建检查",
+            "pt": "verificação de compilação sem alterações"
+          }
+        },
+        {
+          "name": "build.sh",
+          "desc": {
+            "en": "builds and checks; never changes the version",
+            "es": "compila y comprueba; nunca cambia la versión",
+            "de": "baut und prüft; ändert nie die Version",
+            "fr": "construit et vérifie ; ne change jamais la version",
+            "it": "compila e controlla; non cambia mai la versione",
+            "ja": "ビルドと検査。バージョンは変更しない",
+            "zh": "构建并检查；从不改变版本",
+            "pt": "compila e verifica; nunca muda a versão"
+          }
+        },
+        {
+          "name": "bump_manifest_version.py",
+          "desc": {
+            "en": "syncs the manifest version",
+            "es": "sincroniza la versión del manifiesto",
+            "de": "gleicht die Manifest-Version an",
+            "fr": "synchronise la version du manifeste",
+            "it": "sincronizza la versione del manifesto",
+            "ja": "マニフェストのバージョンを同期",
+            "zh": "同步清单版本",
+            "pt": "sincroniza a versão do manifesto"
+          }
+        },
+        {
+          "name": "dev.sh",
+          "desc": {
+            "en": "development mode",
+            "es": "modo de desarrollo",
+            "de": "Entwicklungsmodus",
+            "fr": "mode développement",
+            "it": "modalità di sviluppo",
+            "ja": "開発モード",
+            "zh": "开发模式",
+            "pt": "modo de desenvolvimento"
+          }
+        },
+        {
+          "name": "hydra-umc.project.json",
+          "desc": {
+            "en": "manifest: version, maturity, family",
+            "es": "manifiesto: versión, madurez, familia",
+            "de": "Manifest: Version, Reifegrad, Familie",
+            "fr": "manifeste : version, maturité, famille",
+            "it": "manifesto: versione, maturità, famiglia",
+            "ja": "マニフェスト：バージョン、成熟度、ファミリー",
+            "zh": "清单：版本、成熟度、系列",
+            "pt": "manifesto: versão, maturidade, família"
+          }
+        },
+        {
+          "name": "package.json",
+          "desc": {
+            "en": "package metadata and scripts",
+            "es": "metadatos y scripts del paquete",
+            "de": "Paketmetadaten und Skripte",
+            "fr": "métadonnées et scripts du paquet",
+            "it": "metadati e script del pacchetto",
+            "ja": "パッケージのメタデータとスクリプト",
+            "zh": "包的元数据和脚本",
+            "pt": "metadados e scripts do pacote"
+          }
+        },
+        {
+          "name": "test.sh",
+          "desc": {
+            "en": "runs the tests",
+            "es": "ejecuta las pruebas",
+            "de": "führt die Tests aus",
+            "fr": "lance les tests",
+            "it": "esegue i test",
+            "ja": "テストを実行",
+            "zh": "运行测试",
+            "pt": "executa os testes"
+          }
+        }
+      ]
+    }
+  ]
+}

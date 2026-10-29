@@ -1,3 +1,9 @@
+<!-- =============================================================================
+HYDRA-UMC-MTCONNECT-ADAPTER - MTConnect probe/current/sample endpoints
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+============================================================================= -->
+
 <p align="center">
   <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-MTCONNECT-ADAPTER banner" width="100%">
 </p>
@@ -9,9 +15,12 @@
 ### 🛠️ Standardisierte XML/HTTP-Schnittstelle zur Überwachung von Werkzeugmaschinen
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Lizenz-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="MTConnect">
-  <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="XML/HTTP">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
+  <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="Standard">
+  <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="Format">
+  <img src="https://img.shields.io/badge/Tests-122%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.1.9-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
@@ -22,16 +31,20 @@
 
 > **Stand von Sicherheit (Safety) und Security:** Dieses Ökosystem ist kein zertifiziertes Sicherheitssystem. Es gibt noch keinen Hardware-E-STOP-Pfad, keine von der Firmware durchgesetzten Grenzen oder Verriegelungen und keinen verifizierten Bewegungsbefehl; Firmware-Images werden mit CRC32 und einem HMAC-SHA256 mit gemeinsamem Schlüssel geprüft, nicht mit einer asymmetrischen Signatur; TLS und gegenseitiges TLS sind optional und standardmäßig aus; noch keine eigene Platine wurde bestückt oder getestet. Lesen Sie die [Sicherheitsbasis](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md) und das [Bedrohungsmodell](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md), bevor Sie sich für die Sicherheit einer Person auf eine Aussage hier verlassen.
 
+---
+
 ## 📋 Auf einen Blick
 
 | | |
 |---|---|
 | Version | `0.1.9` |
 | Reifegrad | Funktionsfähig |
-| Tests | 115 |
+| Tests | 122 (`npm test`) |
 | Technik | Node.js / Express / MTConnect 1.7 XML |
 | Ziel | Der Raspberry Pi CM5 einer HYDRA-UMC-Zelle |
 | Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
+
+**Springe zu:** [Überblick](#-überblick) · [Architektur](#-architektur) · [Schnellstart](#-schnellstart) · [Tests](#-tests) · [Struktur des Repositorys](#-struktur-des-repositorys) · [Verwandte Projekte](#-verwandte-projekte)
 
 ## 🚦 Projektstatus
 
@@ -42,11 +55,11 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Bereich | Stand | Was das hier bedeutet |
 |---|---|---|
 | Software | 🟡 | Funktioniert für seinen Hauptzweck; die Ehrlichkeitsprüfung oben nennt, was noch fehlt |
-| Tests | 🟢 | 115 automatische Tests, bei jeder Änderung ausgeführt |
+| Tests | 🟢 | 122 automatische Tests, bei jeder Änderung ausgeführt |
 | Echte Hardware | 🔴 | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
 | Dokumentation | 🟢 | README in acht Sprachen, bei jeder Änderung gegen das Manifest geprüft |
 
-## 1. 🛠️ TECHNISCHER ÜBERBLICK
+## 🎯 Überblick
 
 **HYDRA-UMC-MTCONNECT-ADAPTER** ist die Legacy- und Fabrikstandard-Brücke zur Überwachung von Werkzeugmaschinen. Er implementiert das MTConnect-Protokoll (Dokumente der Version 1.7, gegen das offizielle XSD geprüft) und exportiert den Roboterschwarm als einen Satz standardisierter Werkzeugmaschinen.
 
@@ -65,9 +78,18 @@ Er bietet eine schreibgeschützte XML/HTTP-Schnittstelle, die es herkömmlicher 
 * 🧩 **Zustände, Geräteroutien und HTTP-Status:** ein CONDITION-DataItem wird als Normal, Warning, Fault oder Unavailable ausgegeben (mit Meldung und nativem Code) und in `/probe` deklariert, wenn das Gerät eines hat; das Gerät deklariert `ASSET_CHANGED` und `ASSET_REMOVED` (es hat keine Assets, sie bleiben UNAVAILABLE); `/HydraNode_1/probe`, `/current` und `/sample` antworten für dieses Gerät; `HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` lässt einen MTConnectError HTTP 400 oder 404 statt 200 tragen (standardmäßig aus). Alles gegen das offizielle XSD geprüft. *(implementiert)*
 * 🔌 **SHDR-Ausgabe für einen cppagent:** ist `HYDRA_UMC_MTCONNECT_SHDR_PORT` gesetzt, liefert der Adapter dieselben Beobachtungen zusätzlich als SHDR-Zeilen (`Zeit|dataItemId|Wert`, Conditions als `Zeit|id|STUFE|nativerCode|||Meldung`) über TCP, sodass ein handelsüblicher MTConnect-Agent ihn lesen kann. Ein Client erhält zuerst den letzten Wert jedes DataItems, danach jede Änderung; die einzige Zeile, die er senden darf, ist `* PING`, beantwortet mit `* PONG`. Nur lesend. Er lauscht auf `127.0.0.1`, sofern `HYDRA_UMC_MTCONNECT_SHDR_HOST` nichts anderes sagt. Mit einem simulierten Agenten getestet. *(implementiert, noch nicht mit einem echten cppagent probiert)*
 
----
+## 🧩 Rolle in HYDRA-UMC
 
-## 2. 🔄 MTCONNECT-DATENFLUSS
+**HYDRA-UMC-MTCONNECT-ADAPTER** zeigt die Roboter der Fabrik-Überwachungssoftware als MTConnect-Geräte: XML nur lesend über HTTP (`/probe`, `/current`, `/sample`), gespeist aus `HYDRA-UMC-SERVER`. Er sendet keinen Befehl an eine Maschine.
+
+## 🏛️ Architektur
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC-MTCONNECT-ADAPTER architecture" width="100%">
+</p>
+
+<details>
+<summary>Textversion des Diagramms (Mermaid)</summary>
 
 ```mermaid
 flowchart LR
@@ -78,9 +100,9 @@ flowchart LR
     HTTP --> MONITOR["Industrie-Monitor / ERP"]
 ```
 
----
+</details>
 
-## 3. 🧱 ARCHITEKTUR & DESIGNENTSCHEIDUNGEN
+### ARCHITEKTUR & DESIGNENTSCHEIDUNGEN
 
 * **Warum es Geschwister, kein Submodul, von HYDRA-UMC-GATEWAY-INDUSTRIAL ist.** Jeder Protokolladapter ist ein separat bereitstellbarer/neustartbarer Prozess - ein Problem bei der MTConnect-XML-Erzeugung legt nie die daneben laufenden OPC-UA- oder MQTT-Adapter lahm.
 * **Warum ein echter MTConnect-Device-/Agent-Stream statt eines generischen XML-Exports.** MTConnect-fähige Fabriksoftware (viele CNC-/MES-Tools) erwartet das spezifische Device-/Agent-/Component-Schema, das der Standard definiert - ein generischer Export bräuchte auf der anderen Seite einen maßgeschneiderten Parser, was den Sinn ergäbe, überhaupt MTConnect zu sprechen.
@@ -91,31 +113,25 @@ flowchart LR
 * **Warum ein degradiertes DataItem den echten MTConnect-Wert `UNAVAILABLE` darstellt und kein eigenes Fehlerformat.** MTConnect-Agenten und -Clients wissen bereits, wie `UNAVAILABLE` anzuzeigen ist - das Vokabular der Spezifikation selbst wiederzuverwenden heißt, dass ein nachgelagertes Werkzeug schon heute geordnet degradiert. Der Grund (keine Daten, Einheitenumrechnung, Quelle ausgefallen, veraltet) bleibt außerhalb des Dokuments: Das offizielle Schema hat dafür kein Attribut, und ein validierender Parser lehnt ein Dokument mit einem zusätzlichen ab.
 * **Warum das Polling-Limit von `CachedReader` generisch ist und nicht auf `spindle_temp` fest verdrahtet.** In dieser Umgebung existiert noch keine echte Maschinenquelle, aber das echte Risiko, gegen das es schützt - einen jahrzehntealten Controller mit Anfragen zu bombardieren, sooft `/current` aufgerufen wird - gilt für jede Quelle, die `FixtureMachineReader` irgendwann ersetzt, also lebt die Drosselung auf Ebene der `MachineReader`-Schnittstelle und nicht in der eigenen Handhabung eines einzelnen DataItems.
 
----
+## 🚀 Schnellstart
 
-## 📂 VERZEICHNISSTRUKTUR
+Benötigt Node.js 20 oder neuer mit npm.
 
-```text
-HYDRA-UMC-MTCONNECT-ADAPTER/
-├── src/         # Quellcode (Node/TypeScript - Adapter, Mapper, HTTP)
-├── tests/       # Vitest-Suite - Data-Item-Mapping, Einheiten, Reader- und Server-Verhalten
-├── docs/
-│   └── API.md   # Echte HTTP-Endpoint-Referenz (Requests, Responses, XML-Form)
-├── dist/       # Kompilierte Ausgabe (npm run build)
-├── images/      # Medien und Diagramme
-├── schemas/     # mtconnect-1.7/: die MTConnect-1.7-XSD-Schemas, gegen die die Antworten geprüft werden, mit ihrer NOTICE
-├── scripts/     # Utility-Skripte (bump-version.mjs)
-├── tools/       # build_test.py (Build-Prüfung ohne Versionierung), ci_validate.py (Manifest-/CHANGELOG-/Doku-Validierung der CI), hydra_project_tool.py und die gemeinsamen _doc_policy.py und _readme_parity.py
-└── README.md
+```bash
+npm install
+npm test
+npm run build
+npm start
+curl http://127.0.0.1:5000/probe
 ```
 
-Reiner Netzwerkdienst ohne eigene Hardware - `hardware/`, `firmware/` und
-`os/` werden gemäß der Repository-Strukturpolitik ausgelassen.
-Siehe [`docs/API.md`](docs/API.md) für die vollständige HTTP-Endpoint-Referenz.
+## 🧪 Tests
 
----
+122 automatische Tests laufen mit `npm test`. Sie brauchen weder Hardware noch etwas außerhalb dieses Rechners.
 
-## 🛠️ ENTWICKLUNGSUMGEBUNG
+Die CI führt `HYDRA_UMC_CI=1 python tools/ci_validate.py` aus; das prüft das Manifest, die Dokumente, die acht READMEs und die Bilder.
+
+## 🏗️ Build und Veröffentlichung
 
 ### Voraussetzungen
 - [Node.js](https://nodejs.org/) (v20 oder höher empfohlen)
@@ -150,17 +166,52 @@ Streaming-Puffer-Semantik - siehe `docs/API.md`) abfragen.
 Um einen echten Roboter zu melden, setzen Sie `HYDRA_UMC_SERVER_URL`. HYDRA-UMC-SERVER beantwortet `GET /api/settings` nur einem angemeldeten Konto; geben Sie dem Adapter daher auch Zugangsdaten: `HYDRA_UMC_SERVER_TOKEN` (ein vom Server bereits ausgestelltes Token) oder `HYDRA_UMC_SERVER_USER` und `HYDRA_UMC_SERVER_PASSWORD` (der Adapter meldet sich selbst an und erneut, wenn die Sitzung abläuft). Ohne eines von beiden wird die Quelle als nicht verfügbar gemeldet (`SOURCE_UNAVAILABLE`). `HYDRA_UMC_MTCONNECT_HOST` schränkt die Lauschadresse ein (Standard `0.0.0.0`), etwa auf `127.0.0.1` hinter einem lokalen Reverse-Proxy. Antworten des Servers werden bis zu 4 MiB gelesen.
 
 ### Versionierung
-`npm run build` bündelt nur den Server. Die Version wird nur von `python tools/hydra_project_tool.py bump` erhöht (über `bump_manifest_version.py`), ein Dezimal-"Kilometerzähler": Patch +1 pro Bump, mit Übertrag auf Minor (und von Minor auf Major) nach 9, statt je ein zweistelliges Segment zu erreichen (`0.0.9` -> `0.1.0`, nicht `0.0.10`).
+`npm run build` bündelt nur den Server. Die Version wird nur von `python tools/hydra_project_tool.py bump` erhöht (über `bump_manifest_version.py`).
 
----
+## 📂 Struktur des Repositorys
 
-## 🚀 FAHRPLAN
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC-MTCONNECT-ADAPTER" width="100%">
+</p>
+
+<details>
+<summary>Textversion des Baums</summary>
+
+```text
+HYDRA-UMC-MTCONNECT-ADAPTER/
+├── src/                       Quellcode (Node/TypeScript - Adapter, Mapper, HTTP)
+├── tests/                     Vitest-Suite - Data-Item-Mapping, Einheiten, Reader- und Server-Verhalten
+├── docs/                      Dokumente des Projekts
+├── images/                    Medien und Diagramme
+├── schemas/                   mtconnect-1.7/: die MTConnect-1.7-XSD-Schemas, gegen die die Antworten geprüft werden, mit ihrer NOTICE
+├── scripts/                   Utility-Skripte (bump-version.mjs)
+├── tools/                     build_test.py (Build-Prüfung ohne Versionierung), ci_validate.py (Manifest-/CHANGELOG-/Doku-Validierung der CI), hydra_project_tool.py und die gemeinsamen _doc_policy.py und _readme_parity.py
+├── .github/                   CI-Workflow und Issue-Vorlagen
+├── CHANGELOG.md               was sich in jeder Version geändert hat
+├── Dockerfile                 Container-Image
+├── build-test.sh              Build-Prüfung ohne Änderungen
+├── build.sh                   baut und prüft; ändert nie die Version
+├── bump_manifest_version.py   gleicht die Manifest-Version an
+├── dev.sh                     Entwicklungsmodus
+├── hydra-umc.project.json     Manifest: Version, Reifegrad, Familie
+├── package.json               Paketmetadaten und Skripte
+└── test.sh                    führt die Tests aus
+```
+
+</details>
+
+## 🗺️ Roadmap und bekannte Grenzen
+
+**Bekannte Grenzen heute**
+
 * **Phase 1:** OPC-UA Pub/Sub-Implementierung für Hochgeschwindigkeitsdatenaustausch und Legacy-Protokoll-Bridging.
 * **Phase 2:** MQTT-Broker-Cluster für massives IoT-Gerätemanagement und hohe Parallelität.
 * **Phase 3:** MTConnect-Adapterunterstützung für die Integration von CNC- und SPS-Maschinen verschiedener Hersteller.
 * **Phase 4:** Unterstützung für MTConnect Multi-Geräte-Aggregation und standardisiertes XML/HTTP-Telemetrie-Streaming.
 
----
+## 🌍 Sprachen
+
+Diese README und die Dokumente des Repositorys gibt es in acht Sprachen: Englisch, Spanisch, Deutsch, Französisch, Italienisch, Japanisch, Chinesisch und Portugiesisch (Portugal). Sie entstehen gemeinsam, und die CI prüft, dass die acht Dateien dieselben Abschnitte und dieselben Links haben. Dieses Repository hat weder eine eigene Oberfläche noch einen eigenen Meldungskatalog, es gibt also keine Oberflächentexte zu übersetzen.
 
 ## 🔗 Verwandte Projekte
 
@@ -253,22 +304,27 @@ Dieses Projekt ist Teil des HYDRA-UMC-Robotik-Ökosystems desselben Autors (Juan
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — Wartungsvorfall-Koordinator: eine Edge-Rolle mit niedrigem Privileg sammelt einen bereinigten Inventar-/Gesundheits-Snapshot, eine Control-Plane-Rolle rendert ihn schreibgeschützt und bittet einen KI-Anbieter um einen Diagnosevorschlag - wendet nie einen Patch an und stellt nie etwas bereit.
 - **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — reproduzierbarer Entwicklungshost (Raspberry Pi 5 / CM5), der den Quellcode des Ökosystems vorhält und begrenzte Build-/Test-Aufgaben über eine dauerhafte Warteschlange ausführt; eine dedizierte Entwicklerrolle, ausdrücklich kein operativer CM5.
 
+## 📚 Dokumentation
 
----
+Hier steht mehr:
 
-## 📚 Dokumentation & Community
+* **[docs/API.md](docs/API.md)** — die echte HTTP-Endpunkt-Referenz: die Anfrage-/Antwortform von `GET /probe`/`GET /current`/`GET /sample`, vollständige Beispiel-XML-Umschläge, die beiden echten `MachineReader`-Implementierungen (`FixtureMachineReader`/`HydraServerMachineReader`), und ein expliziter Hinweis darauf, was noch ein Platzhalter ist (der einzige feste HydraNode - der dynamische Baum mit einem Gerät pro Roboter ist separate, größere Arbeit).
+* [Sicherheitsgrundlage des Ökosystems](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [Bedrohungsmodell des Ökosystems](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [Änderungsprotokoll dieses Repositorys](CHANGELOG.md)
+* [Lizenz dieses Repositorys](LICENSE.md)
 
-- **[docs/API.md](docs/API.md)** — die echte HTTP-Endpunkt-Referenz: die Anfrage-/Antwortform von `GET /probe`/`GET /current`/`GET /sample`, vollständige Beispiel-XML-Umschläge, die beiden echten `MachineReader`-Implementierungen (`FixtureMachineReader`/`HydraServerMachineReader`), und ein expliziter Hinweis darauf, was noch ein Platzhalter ist (der einzige feste HydraNode - der dynamische Baum mit einem Gerät pro Roboter ist separate, größere Arbeit).
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** — Technologie-Stack und Coding-Richtlinien für einen Pull Request.
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — die in dieser Community erwarteten Verhaltensstandards.
-- **[SECURITY.md](SECURITY.md)** — wie man eine Schwachstelle meldet, und die echten Sicherheitsschwerpunkte dieses Projekts.
-- **[SUPPORT.md](SUPPORT.md)** — wo man Fragen stellt und Fehler meldet.
-- **[LICENSE.md](LICENSE.md)** — die eigene Lizenz dieses Projekts.
+## 🤝 Mitwirken und Community
+
+* Führe vor einem Pull Request `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py` (oder `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`) aus: Es muss `CI_VALIDATION=PASS` ausgeben. Führe dafür nicht `build.sh` oder `build.bat` aus; Bauen ist keine Prüfung.
+* Die acht READMEs entstehen aus einer einzigen Quelle in HYDRA-UMC-DOCS; bearbeite sie nicht von Hand. Ändere die Quelle und schreibe sie mit `tools/make_readmes.py` neu.
+* Behaupte in einer README nichts, was nicht gelaufen ist: Schreibe „simuliert“ oder „nicht auf Hardware erprobt“, wo das stimmt.
+* Siehe [CONTRIBUTING.md](CONTRIBUTING.md), den [Verhaltenskodex](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md) und [SUPPORT.md](SUPPORT.md).
 
 ## 👤 AUTOR
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 LIZENZ
-GPL-3.0-or-later - Siehe LICENSE für Details.
+
+GPL-3.0-or-later - [LICENSE](LICENSE).
