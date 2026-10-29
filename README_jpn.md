@@ -29,7 +29,7 @@
 | バージョン | `0.1.9` |
 | 成熟度 | 機能する |
 | テスト | 115 |
-| 技術 | Node.js / Express / ANSI/MTC1.4 XML |
+| 技術 | Node.js / Express / MTConnect 1.7 XML |
 | 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
 

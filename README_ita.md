@@ -29,7 +29,7 @@
 | Versione | `0.1.9` |
 | Maturità | Funzionale |
 | Test | 115 |
-| Tecnologia | Node.js / Express / ANSI/MTC1.4 XML |
+| Tecnologia | Node.js / Express / MTConnect 1.7 XML |
 | Destinazione | Il Raspberry Pi CM5 di una cella HYDRA-UMC |
 | Su hardware reale | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
 

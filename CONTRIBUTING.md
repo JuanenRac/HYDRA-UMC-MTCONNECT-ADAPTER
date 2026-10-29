@@ -4,7 +4,7 @@ We welcome contributions to the machine tool monitoring bridge of the HYDRA-UMC 
 
 ## Technology Stack
 - **Runtime**: Node.js 20+ (TypeScript), Express.
-- **Protocol**: MTConnect (ANSI/MTC1.4) `GET /probe` and `GET /current` over plain HTTP - no SHDR, no framework beyond Express (the XML is hand-built, see `src/server.ts`).
+- **Protocol**: MTConnect 1.7 `GET /probe` and `GET /current` over plain HTTP - no SHDR, no framework beyond Express (the XML is hand-built, see `src/server.ts`).
 - **Formats**: XML, HTTP.
 
 ## Guidelines

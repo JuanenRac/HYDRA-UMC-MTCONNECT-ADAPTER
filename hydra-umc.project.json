@@ -8,7 +8,7 @@
   "technologies": [
     "Node.js",
     "Express",
-    "ANSI/MTC1.4 XML"
+    "MTConnect 1.7 XML"
   ],
   "deployment_target": "cm5",
   "maturity": "functional",

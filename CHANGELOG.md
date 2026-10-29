@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+- The standard is named as MTConnect 1.7 (the version the documents follow) in the README table of the eight languages, the manifest, the package description, the contributing guide and the banner, instead of an older edition.
+
 ## [0.1.9] - The adapter now speaks SHDR, the line protocol an MTConnect agent such
 
 - The adapter now speaks SHDR, the line protocol an MTConnect agent such as cppagent reads from an adapter. With `HYDRA_UMC_MTCONNECT_SHDR_PORT` set it serves the observations of its buffer over TCP (`time|dataItemId|value`; conditions as `time|id|LEVEL|nativeCode|||message`): the latest value of every DataItem on connect, then each change. It is read only (the one line it accepts is the `* PING` heartbeat), listens on `127.0.0.1` unless `HYDRA_UMC_MTCONNECT_SHDR_HOST` is set, and takes at most 16 clients. The source is polled on a timer for it, so values flow without any HTTP request. Tests run it against a simulated agent.

@@ -29,7 +29,7 @@
 | 版本 | `0.1.9` |
 | 成熟度 | 可用 |
 | 测试 | 115 |
-| 技术栈 | Node.js / Express / ANSI/MTC1.4 XML |
+| 技术栈 | Node.js / Express / MTConnect 1.7 XML |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
 
