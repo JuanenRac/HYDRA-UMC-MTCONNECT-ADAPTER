@@ -30,6 +30,7 @@ import { readPackageVersion } from "./version.js";
 import { markStale, sourceUnavailableReading, toDataItemReading, type DataItemReading, type RawReading } from "./dataitem.js";
 import { CachedReader, type MachineReader } from "./reader.js";
 import { HydraServerMachineReader } from "./hydraServerReader.js";
+import { parseShdrSource, ShdrMachineReader } from "./shdrReader.js";
 import { ObservationBuffer, type Observation } from "./buffer.js";
 import { element, escapeXml } from "./xml.js";
 import { ShdrServer } from "./shdr.js";
@@ -97,6 +98,12 @@ function isDemo(env: NodeJS.ProcessEnv = process.env): boolean {
 
 function buildReader(): MachineReader {
   const serverUrl = process.env.HYDRA_UMC_SERVER_URL;
+  const shdrSource = (process.env.HYDRA_UMC_MTCONNECT_SHDR_SOURCE ?? "").trim();
+  if (!serverUrl && shdrSource) {
+    const parsed = parseShdrSource(shdrSource);
+    if (!parsed) throw new Error(`HYDRA-UMC-MTCONNECT-ADAPTER: HYDRA_UMC_MTCONNECT_SHDR_SOURCE must be host:port or a port, got ${shdrSource}`);
+    return new ShdrMachineReader(parsed);
+  }
   if (!serverUrl) return isDemo() ? new FixtureMachineReader() : new UnconfiguredMachineReader();
   const robotIdRaw = process.env.HYDRA_UMC_ROBOT_ID;
   const robotId = robotIdRaw ? Number(robotIdRaw) : undefined;
@@ -404,9 +411,12 @@ function main() {
   const port = resolvePort();
   const host = process.env.HYDRA_UMC_MTCONNECT_HOST?.trim() || "0.0.0.0";
   const app = buildApp();
+  const shdrSource = (process.env.HYDRA_UMC_MTCONNECT_SHDR_SOURCE ?? "").trim();
   const source = process.env.HYDRA_UMC_SERVER_URL
     ? `live HYDRA-UMC-SERVER at ${process.env.HYDRA_UMC_SERVER_URL}`
-    : isDemo()
+    : shdrSource
+      ? `SHDR stream at ${shdrSource}`
+      : isDemo()
       ? "FixtureMachineReader - DEMONSTRATION DATA (HYDRA_UMC_MTCONNECT_DEMO=1)"
       : "none configured: every DataItem is UNAVAILABLE (set HYDRA_UMC_SERVER_URL for real robot data)";
   // 0.0.0.0 keeps the agent reachable by an MTConnect client on the network

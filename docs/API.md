@@ -159,6 +159,10 @@ A `CONDITION` DataItem is served in a `<Condition>` block, one element per obser
 
 `GET /sample` reports its protocol-level errors as an `MTConnectError` document (see above) - `OUT_OF_RANGE` and `INVALID_REQUEST`; the per-device routes add `NO_DEVICE`. The HTTP status of such a document is `200`, as it always was. With `HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` it is `400` (`INVALID_REQUEST`, `OUT_OF_RANGE`) or `404` (`NO_DEVICE`) and the body is the same document, which is what clients that follow the status code expect. Any other path (not `/probe`, `/current` or `/sample`) returns Express's default `404`. The response never announces the framework (`X-Powered-By` is off).
 
+## SHDR input
+
+With `HYDRA_UMC_MTCONNECT_SHDR_SOURCE` set to `host:port` (or only a port, meaning this machine) and no `HYDRA_UMC_SERVER_URL`, the machine source is another adapter's SHDR stream, for example the one `HYDRA-UMC-BRIDGE-CNC` serves. The reader keeps one TCP connection, remembers the latest value of the DataItems this agent declares (`execution` and `avail`; the other items of the stream are ignored), answers `* PING` with `* PONG`, and sends nothing else. While the connection is down, or before the source has said anything, every DataItem is `UNAVAILABLE` with the error code `SOURCE_UNAVAILABLE`; the reader reconnects on the next poll.
+
 ## SHDR output
 
 With `HYDRA_UMC_MTCONNECT_SHDR_PORT` set to a port, the adapter also listens for TCP connections speaking SHDR, the adapter-side protocol of an MTConnect agent (for example cppagent, whose `Adapters` entry points at this host and port). The address defaults to `127.0.0.1`; `HYDRA_UMC_MTCONNECT_SHDR_HOST` changes it. At most 16 clients are served.
