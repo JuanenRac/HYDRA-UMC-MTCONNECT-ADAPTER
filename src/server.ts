@@ -342,15 +342,31 @@ ${extras}      </DataItems>
   });
 
   // GET /current - the latest observation of every DataItem declared in /probe.
-  app.get("/current", async (_req, res) => {
+  // GET /current?at=<sequence> - the state as it stood at that sequence.
+  const currentHandler = async (req: express.Request, res: express.Response, includeAgent: boolean): Promise<void> => {
+    const atRaw = req.query.at;
+    let at: number | undefined;
+    if (atRaw !== undefined) {
+      const parsed = Number(atRaw);
+      if (typeof atRaw !== "string" || atRaw.trim() === "" || !Number.isInteger(parsed) || parsed < 0) {
+        sendError(res, "INVALID_REQUEST", `'at' must be a non-negative integer, got ${JSON.stringify(atRaw)}`);
+        return;
+      }
+      at = parsed;
+    }
     await refresh();
-    res.type("application/xml").send(streamsXml(buffer.nextSequence, buffer.current()));
-  });
-  app.get("/:device/current", async (req, res) => {
+    if (at !== undefined && (at < buffer.firstSequence || at > buffer.lastSequence)) {
+      sendError(res, "OUT_OF_RANGE", `'at' must be between firstSequence=${buffer.firstSequence} and lastSequence=${buffer.lastSequence}, got ${at}`);
+      return;
+    }
+    const observations = at === undefined ? buffer.current() : buffer.currentAt(at);
+    res.type("application/xml").send(streamsXml(buffer.nextSequence, observations, includeAgent));
+  };
+  app.get("/current", (req, res) => currentHandler(req, res, true));
+  app.get("/:device/current", (req, res) => {
     const device = String(req.params.device);
     if (!isOurDevice(device)) return sendError(res, "NO_DEVICE", `this agent serves the device HydraNode_1, not ${JSON.stringify(device)}`);
-    await refresh();
-    res.type("application/xml").send(streamsXml(buffer.nextSequence, buffer.current(), false));
+    return currentHandler(req, res, false);
   });
 
   // GET /sample?from=<sequence>&count=<n> - the observations with sequence >=

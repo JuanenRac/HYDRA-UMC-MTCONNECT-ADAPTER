@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **`GET /current?at=<sequence>`:** the state of the device as it stood at an earlier sequence (also on the per-device route); an `at` outside the buffer is `OUT_OF_RANGE`, a malformed one `INVALID_REQUEST`. Covered by new tests, 136 in all.
+
 ## [0.2.0] - A stopped machine stays stopped, a port variable of its own, reading the SHDR stream of another adapter and the universal README
 
 - **A `STOPPED` execution of an SHDR source stays `STOPPED`:** a machine that waits for its operator to reset it is not ready (`READY`) and not paused (`INTERRUPTED`, `FEED_HOLD`); the value is passed on unchanged, and a test and the API notes say so.

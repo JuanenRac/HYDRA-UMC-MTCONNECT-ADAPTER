@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="Standard">
   <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="Format">
-  <img src="https://img.shields.io/badge/Tests-131%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-136%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** die Einheitenumrechnung (`src/units.ts`), das Qualitäts-/Zeitstempel-/Fehlercode-Mapping (`src/dataitem.ts`), das Polling/Caching (`src/reader.ts`), der echte, auf HYDRA-UMC-SERVER gestützte Maschinen-Reader (`src/hydraServerReader.ts`) und der HTTP-Server (`src/server.ts`) sind alle real und getestet (131 bestandene Tests über 11 Dateien, einschließlich echter HTTP-Anfragen über einen echten lauschenden Socket via `supertest` - nicht nur ein Kompilierungscheck). Das Gerätemodell ist fest auf genau einen HydraNode (`hydra_umc_1`) codiert - das beweist, dass die HTTP-Oberfläche und die XML-Form Ende-zu-Ende spezifikationskonform sind, aber ein echtes Deployment, das mehr als einen Roboter überwacht, müsste dies aus dem eigenen Live-Bestand von HYDRA-UMC-SERVER generieren, was noch nicht geschieht. Das ausgegebene XML wurde auf spezifikationskonforme Form geprüft (Namespaces, `Device`/`DataItem`-IDs, eine gemeinsame `instanceId`), aber noch nicht live gegen einen echten Drittanbieter-MTConnect-Agent oder -Collector getestet. Siehe `CHANGELOG.md` für das, was bisher genau ausgeliefert wurde.
+**Ehrlichkeitscheck - was heute wirklich läuft:** die Einheitenumrechnung (`src/units.ts`), das Qualitäts-/Zeitstempel-/Fehlercode-Mapping (`src/dataitem.ts`), das Polling/Caching (`src/reader.ts`), der echte, auf HYDRA-UMC-SERVER gestützte Maschinen-Reader (`src/hydraServerReader.ts`) und der HTTP-Server (`src/server.ts`) sind alle real und getestet (136 bestandene Tests über 13 Dateien, einschließlich echter HTTP-Anfragen über einen echten lauschenden Socket via `supertest` - nicht nur ein Kompilierungscheck). Das Gerätemodell ist fest auf genau einen HydraNode (`hydra_umc_1`) codiert - das beweist, dass die HTTP-Oberfläche und die XML-Form Ende-zu-Ende spezifikationskonform sind, aber ein echtes Deployment, das mehr als einen Roboter überwacht, müsste dies aus dem eigenen Live-Bestand von HYDRA-UMC-SERVER generieren, was noch nicht geschieht. Das ausgegebene XML wurde auf spezifikationskonforme Form geprüft (Namespaces, `Device`/`DataItem`-IDs, eine gemeinsame `instanceId`), aber noch nicht live gegen einen echten Drittanbieter-MTConnect-Agent oder -Collector getestet. Siehe `CHANGELOG.md` für das, was bisher genau ausgeliefert wurde.
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.2.0` |
 | Reifegrad | Funktionsfähig |
-| Tests | 131 (`npm test`) |
+| Tests | 136 (`npm test`) |
 | Technik | Node.js / Express / MTConnect 1.7 XML |
 | Ziel | Der Raspberry Pi CM5 einer HYDRA-UMC-Zelle |
 | Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
@@ -55,7 +55,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Bereich | Stand | Was das hier bedeutet |
 |---|---|---|
 | Software | 🟡 | Funktioniert für seinen Hauptzweck; die Ehrlichkeitsprüfung oben nennt, was noch fehlt |
-| Tests | 🟢 | 131 automatische Tests, bei jeder Änderung ausgeführt |
+| Tests | 🟢 | 136 automatische Tests, bei jeder Änderung ausgeführt |
 | Echte Hardware | 🔴 | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
 | Dokumentation | 🟢 | README in acht Sprachen, bei jeder Änderung gegen das Manifest geprüft |
 
@@ -132,7 +132,7 @@ curl http://127.0.0.1:5000/probe
 
 ## 🧪 Tests
 
-131 automatische Tests laufen mit `npm test`. Sie brauchen weder Hardware noch etwas außerhalb dieses Rechners.
+136 automatische Tests laufen mit `npm test`. Sie brauchen weder Hardware noch etwas außerhalb dieses Rechners.
 
 Die CI führt `HYDRA_UMC_CI=1 python tools/ci_validate.py` aus; das prüft das Manifest, die Dokumente, die acht READMEs und die Bilder.
 

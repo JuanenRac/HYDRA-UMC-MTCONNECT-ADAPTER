@@ -82,9 +82,11 @@ When the process starts, every DataItem has an `UNAVAILABLE` observation (and `a
 
 ---
 
-## `GET /current`
+## `GET /current?at=<sequence>`
 
 The newest observation of every DataItem, grouped in a `DeviceStream` for the agent and one for the HydraNode.
+
+With `at`, the state as it stood at that sequence: the newest observation of each DataItem with a sequence up to `at`. A DataItem whose observations up to `at` have already left the buffer is left out. `at` outside `firstSequence`..`lastSequence` is an `OUT_OF_RANGE` error and a value that is not a non-negative integer is `INVALID_REQUEST`. The header still reports where the stream stands now.
 
 **Response** - `200`, `Content-Type: application/xml`:
 

@@ -74,6 +74,21 @@ export class ObservationBuffer {
   }
 
   /**
+   * The newest observation of every DataItem as it stood at sequence `at`
+   * (observations with sequence <= `at`), in sequence order. A DataItem whose
+   * observations up to `at` were already dropped from the buffer is left out
+   * rather than guessed.
+   */
+  currentAt(at: number): Observation[] {
+    const latest = new Map<string, Observation>();
+    for (const item of this.items) {
+      if (item.sequence > at) break;
+      latest.set(item.id, item);
+    }
+    return [...latest.values()].sort((a, b) => a.sequence - b.sequence);
+  }
+
+  /**
    * The observations with sequence >= `from` (inclusive, as MTConnect defines it), at most `count`
    * of them. `nextSequence` is where the client continues: right after the last observation returned.
    */
