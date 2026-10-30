@@ -81,6 +81,20 @@ describe("ShdrMachineReader", () => {
     expect(execution).toMatchObject({ category: "EVENT", type: "EXECUTION", value: "ACTIVE", timestampMs: Date.parse("2026-01-01T00:00:02.000Z") });
   });
 
+  it("passes a STOPPED execution through as STOPPED, never as READY", async () => {
+    // A machine that is stopped until its operator resets it is not ready for work: the value must reach the agent unchanged.
+    const port = await serve((socket) => {
+      socket.write("2026-01-01T00:00:00.000Z|execution|READY\n2026-01-01T00:00:01.000Z|execution|STOPPED\n");
+    });
+    reader = new ShdrMachineReader({ host: "127.0.0.1", port });
+    const readings = await eventually(async () => {
+      const got = await reader!.read();
+      if (!got.some((r) => r.id === "execution" && r.value === "STOPPED")) throw new Error("not yet");
+      return got;
+    });
+    expect(readings.find((r) => r.id === "execution")).toMatchObject({ category: "EVENT", type: "EXECUTION", value: "STOPPED" });
+  });
+
   it("answers a heartbeat", async () => {
     let answer = "";
     const port = await serve((socket) => {

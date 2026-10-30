@@ -163,6 +163,8 @@ A `CONDITION` DataItem is served in a `<Condition>` block, one element per obser
 
 With `HYDRA_UMC_MTCONNECT_SHDR_SOURCE` set to `host:port` (or only a port, meaning this machine) and no `HYDRA_UMC_SERVER_URL`, the machine source is another adapter's SHDR stream, for example the one `HYDRA-UMC-BRIDGE-CNC` serves. The reader keeps one TCP connection, remembers the latest value of the DataItems this agent declares (`execution` and `avail`; the other items of the stream are ignored), answers `* PING` with `* PONG`, and sends nothing else. While the connection is down, or before the source has said anything, every DataItem is `UNAVAILABLE` with the error code `SOURCE_UNAVAILABLE`; the reader reconnects on the next poll.
 
+The `execution` values of the source are passed on word for word. In particular `STOPPED` (the machine waits for its operator to reset it) stays `STOPPED`: it is neither `READY` nor a pause (`INTERRUPTED`, `FEED_HOLD`), and the adapter never turns it into either.
+
 ## SHDR output
 
 With `HYDRA_UMC_MTCONNECT_SHDR_PORT` set to a port, the adapter also listens for TCP connections speaking SHDR, the adapter-side protocol of an MTConnect agent (for example cppagent, whose `Adapters` entry points at this host and port). The address defaults to `127.0.0.1`; `HYDRA_UMC_MTCONNECT_SHDR_HOST` changes it. At most 16 clients are served.
