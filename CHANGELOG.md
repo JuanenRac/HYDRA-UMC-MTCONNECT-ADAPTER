@@ -253,7 +253,9 @@ current state of what's implemented vs. planned; no behavior changed.
 - **`build.sh` / `build.bat`** - `npm install && npm run build`.
 - **`dev.sh` / `dev.bat`** - run against source directly (no build step) for local development.
 
-## Earlier history
+## Earlier changes
+
+These entries were written before the project tagged its releases and cannot be tied to one version, so they are listed here without one.
 
 ### Real request timeout on the HYDRA-UMC-SERVER poll
 
