@@ -11,7 +11,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
-import { buildApp, readIntegerEnv, resolvePort } from "../src/server.js";
+import { buildApp, readIntegerEnv, resolveListenPortOf, resolvePort } from "../src/server.js";
 import { ObservationBuffer } from "../src/buffer.js";
 import { HydraServerMachineReader, readJsonCapped } from "../src/hydraServerReader.js";
 import type { MachineReader } from "../src/reader.js";
@@ -171,6 +171,17 @@ describe("environment settings", () => {
     expect(() => resolvePort({ PORT: "abc" })).toThrow(/PORT/);
     expect(() => resolvePort({ PORT: "70000" })).toThrow(/PORT/);
     expect(() => resolvePort({ PORT: "0" })).toThrow(/PORT/);
+  });
+
+  it("reads the variable of its own before the shared PORT, and only PORT earns a warning", () => {
+    expect(resolvePort({ HYDRA_UMC_MTCONNECT_PORT: "5100", PORT: "3000" })).toBe(5100);
+    expect(resolveListenPortOf({ HYDRA_UMC_MTCONNECT_PORT: "5100", PORT: "3000" }).warning).toBeUndefined();
+    const shared = resolveListenPortOf({ PORT: "3000" });
+    expect(shared.port).toBe(3000);
+    expect(shared.warning).toContain("HYDRA_UMC_MTCONNECT_PORT");
+    expect(resolveListenPortOf({}).source).toBe("default");
+    expect(() => resolvePort({ HYDRA_UMC_MTCONNECT_PORT: "abc", PORT: "3000" })).toThrow(/HYDRA_UMC_MTCONNECT_PORT/);
+    expect(resolvePort({ HYDRA_UMC_MTCONNECT_PORT: " ", PORT: "3000" })).toBe(3000);
   });
 });
 

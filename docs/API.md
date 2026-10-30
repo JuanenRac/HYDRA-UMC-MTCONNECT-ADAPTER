@@ -10,7 +10,7 @@ documents are built by hand, since the payload shape is fixed and small. Every
 response is validated against the official MTConnect 1.7 schemas in
 `tests/xsd-validation.test.ts`.
 
-Listens on `0.0.0.0:5000` by default (`PORT` and `HYDRA_UMC_MTCONNECT_HOST` env vars to override; a `PORT` or interval setting that is not a valid number stops the start instead of being replaced by a default). No authentication on its own routes - this mirrors how real MTConnect agents are deployed on a factory LAN. (The adapter itself authenticates *to* HYDRA-UMC-SERVER: see below.)
+Listens on `0.0.0.0:5000` by default (`HYDRA_UMC_MTCONNECT_PORT` and `HYDRA_UMC_MTCONNECT_HOST` env vars to override; the shared `PORT` still works as a last resort and prints a warning, so a variable shared by several services cannot move this one by accident; a port or interval setting that is not a valid number stops the start instead of being replaced by a default). No authentication on its own routes - this mirrors how real MTConnect agents are deployed on a factory LAN. (The adapter itself authenticates *to* HYDRA-UMC-SERVER: see below.)
 
 All endpoints share one `Header` block (`creationTime`, `instanceId`, `bufferSize`, ...). `instanceId` is fixed per process; the Streams header also carries the sequence range the agent really holds.
 

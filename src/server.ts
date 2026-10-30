@@ -34,6 +34,7 @@ import { parseShdrSource, ShdrMachineReader } from "./shdrReader.js";
 import { ObservationBuffer, type Observation } from "./buffer.js";
 import { element, escapeXml } from "./xml.js";
 import { ShdrServer } from "./shdr.js";
+import { resolveListenPort, type ResolvedPort } from "./portConfig.js";
 
 /** A non-negative integer from an environment variable; a value that is set but not one is a startup error, never a silent default. */
 export function readIntegerEnv(name: string, fallback: number, env: NodeJS.ProcessEnv = process.env): number {
@@ -47,10 +48,13 @@ export function readIntegerEnv(name: string, fallback: number, env: NodeJS.Proce
 }
 
 /** MTConnect implementations commonly default to 5000, so an off-the-shelf client can point at this agent with no configuration. */
+export function resolveListenPortOf(env: NodeJS.ProcessEnv = process.env): ResolvedPort {
+  return resolveListenPort(env, "HYDRA-UMC-MTCONNECT-ADAPTER", "HYDRA_UMC_MTCONNECT_PORT", 5000);
+}
+
+/** The port of its own variable `HYDRA_UMC_MTCONNECT_PORT` first, then the shared `PORT` (with a warning in main), then 5000. */
 export function resolvePort(env: NodeJS.ProcessEnv = process.env): number {
-  const port = readIntegerEnv("PORT", 5000, env);
-  if (port < 1 || port > 65_535) throw new Error(`HYDRA-UMC-MTCONNECT-ADAPTER: PORT must be in 1..65535, got ${env.PORT}`);
-  return port;
+  return resolveListenPortOf(env).port;
 }
 
 // The DataItems /probe declares for the HydraNode device, and the one for the agent itself.
@@ -408,7 +412,9 @@ ${extras}      </DataItems>
 }
 
 function main() {
-  const port = resolvePort();
+  const listen = resolveListenPortOf();
+  if (listen.warning) console.warn(`[HYDRA-UMC-MTCONNECT-ADAPTER] ${listen.warning}`);
+  const port = listen.port;
   const host = process.env.HYDRA_UMC_MTCONNECT_HOST?.trim() || "0.0.0.0";
   const app = buildApp();
   const shdrSource = (process.env.HYDRA_UMC_MTCONNECT_SHDR_SOURCE ?? "").trim();
