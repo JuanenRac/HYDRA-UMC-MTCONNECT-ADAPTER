@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - A stopped machine stays stopped, a port variable of its own, reading the SHDR stream of another adapter and the universal README
+
 - **A `STOPPED` execution of an SHDR source stays `STOPPED`:** a machine that waits for its operator to reset it is not ready (`READY`) and not paused (`INTERRUPTED`, `FEED_HOLD`); the value is passed on unchanged, and a test and the API notes say so.
 
 - **The listen port has a variable of its own:** `HYDRA_UMC_MTCONNECT_PORT` wins over the shared `PORT`, which several services of one machine read (a shared environment file could silently move this service onto another one's port). `PORT` still works as a last resort and prints a warning; a value that is set but not a valid port still stops the start, and the container health check follows the same order.
