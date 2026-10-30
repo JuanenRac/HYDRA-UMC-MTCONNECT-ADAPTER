@@ -81,6 +81,7 @@ GPL-3.0-or-later - see LICENSE
 * 🧪 **架空のデータなし：** `HYDRA_UMC_SERVER_URL` が無い場合、すべての DataItem は `UNAVAILABLE` です。合成のデモ値は `HYDRA_UMC_MTCONNECT_DEMO=1` のときだけ提供され、デバイスの説明にもその旨が示されます。*(実装済み)*
 * 🧩 **コンディション・デバイス別ルート・HTTP ステータス:** CONDITION の DataItem は Normal、Warning、Fault、Unavailable として(メッセージとネイティブコード付きで)出力され、デバイスが持つ場合は `/probe` で宣言されます。デバイスは `ASSET_CHANGED` と `ASSET_REMOVED` を宣言します(アセットはないので UNAVAILABLE のままです)。`/HydraNode_1/probe`、`/current`、`/sample` はそのデバイスについて応答します。`HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` は MTConnectError に 200 の代わりに HTTP 400 または 404 を付けます(既定では無効)。すべて公式 XSD で検証済みです。 *(実装済み)*
 * 🔌 **cppagent 向け SHDR 出力:** `HYDRA_UMC_MTCONNECT_SHDR_PORT` を設定すると、アダプターは同じ観測値を SHDR 行(`時刻|dataItemId|値`、コンディションは `時刻|id|レベル|ネイティブコード|||メッセージ`)として TCP でも提供し、市販の MTConnect エージェントが読み取れます。クライアントはまず各 DataItem の最新値を受け取り、その後は変更のたびに受け取ります。送信できる行は `* PING` のみで、`* PONG` が返ります。読み取り専用です。`HYDRA_UMC_MTCONNECT_SHDR_HOST` で指定しない限り `127.0.0.1` で待ち受けます。模擬エージェントでテスト済みです。 *(実装済み、実際の cppagent では未確認)*
+* 🔌 **CNC ブリッジの SHDR ストリームを読む(任意):** `HYDRA_UMC_MTCONNECT_SHDR_SOURCE=host:port` を設定すると、エージェントは別のアダプターの SHDR 出力から機械の実行状態と可用性を取得します。接続が切れると、最後の値ではなくすべての DataItem を利用不可として示します。読み取り専用です。
 
 ## 🧩 HYDRA-UMC での役割
 

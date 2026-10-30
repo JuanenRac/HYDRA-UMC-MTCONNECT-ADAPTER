@@ -80,6 +80,7 @@ GPL-3.0-or-later - see LICENSE
 * 🧪 **不编造数据：** 没有 `HYDRA_UMC_SERVER_URL` 时，所有 DataItem 均为 `UNAVAILABLE`；合成的演示数值仅在设置 `HYDRA_UMC_MTCONNECT_DEMO=1` 时提供，且设备的描述中会注明。*(已实现)*
 * 🧩 **状态、按设备的路由与 HTTP 状态码：** CONDITION 类型的 DataItem 以 Normal、Warning、Fault 或 Unavailable 输出（带消息和原生代码），设备拥有时会在 `/probe` 中声明；设备声明了 `ASSET_CHANGED` 和 `ASSET_REMOVED`（它没有资产，所以保持 UNAVAILABLE）；`/HydraNode_1/probe`、`/current` 和 `/sample` 针对该设备应答；`HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` 让 MTConnectError 携带 HTTP 400 或 404 而不是 200（默认关闭）。全部已用官方 XSD 校验。 *(已实现)*
 * 🔌 **面向 cppagent 的 SHDR 输出：** 设置 `HYDRA_UMC_MTCONNECT_SHDR_PORT` 后，适配器还会通过 TCP 以 SHDR 行（`时间|dataItemId|值`，状态为 `时间|id|级别|原生代码|||消息`）提供相同的观测值，现成的 MTConnect 代理即可读取。客户端先收到每个 DataItem 的最新值，随后收到每次变化；它唯一可以发送的行是 `* PING`，回复 `* PONG`。只读。除非 `HYDRA_UMC_MTCONNECT_SHDR_HOST` 另行指定，否则监听 `127.0.0.1`。已用模拟代理测试。 *(已实现，尚未用真实 cppagent 试过)*
+* 🔌 **读取 CNC 桥接的 SHDR 数据流(可选):** 设置 `HYDRA_UMC_MTCONNECT_SHDR_SOURCE=host:port` 后，代理从另一个适配器的 SHDR 输出获取机床的执行状态和可用性；连接丢失时，所有 DataItem 显示为不可用，而不是最后一次的值。只读。
 
 ## 🧩 在 HYDRA-UMC 中的角色
 
