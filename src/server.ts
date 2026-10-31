@@ -76,6 +76,25 @@ const AGENT_AVAILABILITY_ID = "agent_avail";
 const DEFAULT_BUFFER_SIZE = 10_000;
 const DEFAULT_SAMPLE_COUNT = 100;
 const MAX_SAMPLE_COUNT = 1000;
+const STREAM_BOUNDARY = "hydra_umc_mtconnect_boundary";
+const MAX_STREAM_INTERVAL_MS = 2_147_483_647;
+
+/** One robot reported as a device of its own (HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1). */
+interface RobotDevice {
+  key: string;
+  name: string;
+  id: string;
+  uuid: string;
+  items: DeclaredItem[];
+}
+
+/** A device whose observations a Streams document groups together. */
+interface StreamDevice {
+  name: string;
+  uuid: string;
+  componentId: string;
+  owns: (itemId: string) => boolean;
+}
 
 /** Synthetic readings for a demonstration: fixed values, never to be mistaken for a machine. Only used when HYDRA_UMC_MTCONNECT_DEMO=1. */
 class FixtureMachineReader implements MachineReader {
@@ -100,7 +119,7 @@ function isDemo(env: NodeJS.ProcessEnv = process.env): boolean {
   return !env.HYDRA_UMC_SERVER_URL && (env.HYDRA_UMC_MTCONNECT_DEMO ?? "").trim() === "1";
 }
 
-function buildReader(): MachineReader {
+function buildReader(perRobot = false): MachineReader {
   const serverUrl = process.env.HYDRA_UMC_SERVER_URL;
   const shdrSource = (process.env.HYDRA_UMC_MTCONNECT_SHDR_SOURCE ?? "").trim();
   if (!serverUrl && shdrSource) {
@@ -120,6 +139,7 @@ function buildReader(): MachineReader {
   return new HydraServerMachineReader({
     baseUrl: serverUrl,
     robotId,
+    perRobot,
     token: process.env.HYDRA_UMC_SERVER_TOKEN,
     username: process.env.HYDRA_UMC_SERVER_USER,
     password: process.env.HYDRA_UMC_SERVER_PASSWORD,
@@ -162,15 +182,17 @@ function renderComponentStream(componentId: string, name: string, observations: 
 }
 
 /** The DeviceStream elements for a set of observations: one for the agent and one for the HydraNode, each only if it has something to say. */
-function renderDeviceStreams(observations: Observation[], nodeUuid: string, includeAgent = true): string {
+function renderDeviceStreams(observations: Observation[], devices: StreamDevice[], includeAgent = true): string {
   const agent = includeAgent ? observations.filter((o) => o.id === AGENT_AVAILABILITY_ID) : [];
-  const node = observations.filter((o) => o.id !== AGENT_AVAILABILITY_ID);
   const streams: string[] = [];
   if (agent.length > 0) {
     streams.push(`    <DeviceStream name="Agent" uuid="hydra-umc-mtconnect-adapter">\n${renderComponentStream("agent", "Agent", agent)}\n    </DeviceStream>`);
   }
-  if (node.length > 0) {
-    streams.push(`    <DeviceStream name="HydraNode_1" uuid="${nodeUuid}">\n${renderComponentStream("hydra_umc_1", "HydraNode_1", node)}\n    </DeviceStream>`);
+  for (const device of devices) {
+    const own = observations.filter((o) => o.id !== AGENT_AVAILABILITY_ID && device.owns(o.id));
+    if (own.length > 0) {
+      streams.push(`    <DeviceStream name="${device.name}" uuid="${device.uuid}">\n${renderComponentStream(device.componentId, device.name, own)}\n    </DeviceStream>`);
+    }
   }
   return streams.join("\n");
 }
@@ -188,6 +210,8 @@ export interface BuildAppOptions {
   extraItems?: DeclaredItem[];
   /** Answer an MTConnectError with an HTTP error status (400 for INVALID_REQUEST and OUT_OF_RANGE, 404 for NO_DEVICE) instead of 200. Defaults to HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1, otherwise off (200, as before). */
   httpErrors?: boolean;
+  /** Serve one Device per robot of the roster (named Robot_<id>) instead of the single HydraNode_1. Needs a reader whose readings carry a `deviceKey` (the HYDRA-UMC-SERVER reader does). Defaults to HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1, otherwise off. */
+  devicePerRobot?: boolean;
 }
 
 /** The HTTP status of an MTConnectError. */
@@ -200,39 +224,90 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   const app = express();
   app.disable("x-powered-by");
   const demo = options.reader === undefined && isDemo();
+  const devicePerRobot = options.devicePerRobot ?? (process.env.HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT ?? "").trim() === "1";
   const cachedReader = new CachedReader(
-    options.reader ?? buildReader(),
+    options.reader ?? buildReader(devicePerRobot),
     options.minPollIntervalMs ?? readIntegerEnv("POLL_INTERVAL_MS", 1000),
   );
   const maxSampleAgeMs = options.maxSampleAgeMs ?? readIntegerEnv("MAX_SAMPLE_AGE_MS", 0);
   const httpErrors = options.httpErrors ?? (process.env.HYDRA_UMC_MTCONNECT_HTTP_ERRORS ?? "").trim() === "1";
   const items: DeclaredItem[] = [...DECLARED_ITEMS, ...(options.extraItems ?? [])];
+  const maxStreams = readIntegerEnv("MTCONNECT_MAX_STREAMS", 8);
+  const minStreamIntervalMs = readIntegerEnv("MTCONNECT_MIN_STREAM_INTERVAL_MS", 100);
+  let openStreams = 0;
   const buffer = new ObservationBuffer((options.bufferSize ?? readIntegerEnv("MTCONNECT_BUFFER_SIZE", DEFAULT_BUFFER_SIZE)) || DEFAULT_BUFFER_SIZE);
   const nodeUuid = demo ? "hydra-umc-node-demo" : "hydra-umc-node-1";
   const nodeDescription = demo ? "HYDRA-UMC multi-robot micro-factory cell - DEMONSTRATION DATA, not a machine" : "HYDRA-UMC multi-robot micro-factory cell";
 
   // Every response carries the same header block; a new process gets a new instanceId.
   const instanceId = Date.now();
-  const deviceModelChangeTimeIso = new Date(instanceId).toISOString();
+  let deviceModelChangeTimeIso = new Date(instanceId).toISOString();
+
+  // One-device-per-robot mode: the robots seen so far, and which robot owns each DataItem id.
+  const robots = new Map<string, RobotDevice>();
+  const robotOfItem = new Map<string, string>();
 
   // Every DataItem starts out UNAVAILABLE, as an MTConnect agent reports it
   // before its first data: a client never meets a DataItem without an
   // observation, and the buffer is never empty.
   const startedAt = Date.now();
   buffer.record({ id: AGENT_AVAILABILITY_ID, category: "EVENT", type: "AVAILABILITY", value: "AVAILABLE", timestampMs: startedAt });
-  for (const item of items) buffer.record({ ...item, value: "UNAVAILABLE", timestampMs: startedAt });
+  if (!devicePerRobot) for (const item of items) buffer.record({ ...item, value: "UNAVAILABLE", timestampMs: startedAt });
 
   const mapReadings = (raw: RawReading[]): DataItemReading[] => raw.map((r) => markStale(toDataItemReading(r), Date.now(), maxSampleAgeMs));
+
+  /** Declares the robots (and their DataItems) a set of readings names for the first time; the device model changed when one is new. */
+  function registerRobots(raw: RawReading[]): void {
+    const at = Date.now();
+    for (const r of raw) {
+      if (r.deviceKey === undefined) continue;
+      let robot = robots.get(r.deviceKey);
+      if (!robot) {
+        const key = r.deviceKey;
+        robot = { key, name: `Robot_${key}`, id: `hydra_umc_robot_${key}`, uuid: `hydra-umc-robot-${key}`, items: [] };
+        robots.set(key, robot);
+        deviceModelChangeTimeIso = new Date(at).toISOString();
+        for (const base of [
+          { id: `robot_${key}_execution`, category: "EVENT" as const, type: "EXECUTION" },
+          { id: `robot_${key}_avail`, category: "EVENT" as const, type: "AVAILABILITY" },
+          { id: `robot_${key}_asset_chg`, category: "EVENT" as const, type: "ASSET_CHANGED" },
+          { id: `robot_${key}_asset_rem`, category: "EVENT" as const, type: "ASSET_REMOVED" },
+        ]) {
+          robot.items.push(base);
+          robotOfItem.set(base.id, key);
+          buffer.record({ ...base, value: "UNAVAILABLE", timestampMs: at });
+        }
+      }
+      if (!robotOfItem.has(r.id)) {
+        robot.items.push({ id: r.id, category: r.category, type: r.type });
+        robotOfItem.set(r.id, r.deviceKey);
+        deviceModelChangeTimeIso = new Date(at).toISOString();
+      }
+    }
+  }
+
+  const reportable = (robot: RobotDevice): DeclaredItem[] => robot.items.filter((item) => !item.type.startsWith("ASSET_"));
 
   /** Reads the source (or its cache) and records whatever changed. Always called before a Streams document is built. */
   async function refresh(): Promise<void> {
     let readings: DataItemReading[];
     try {
-      readings = mapReadings(await cachedReader.getReadings());
+      const raw = await cachedReader.getReadings();
+      if (devicePerRobot) registerRobots(raw);
+      readings = mapReadings(raw);
+      if (devicePerRobot) {
+        // a robot that left the roster has nothing to report any more
+        const seen = new Set(raw.map((r) => r.id));
+        const timestampMs = Date.now();
+        for (const robot of robots.values()) {
+          for (const item of reportable(robot)) if (!seen.has(item.id)) readings.push(sourceUnavailableReading(item.id, item.category, item.type, timestampMs));
+        }
+      }
     } catch {
       // The source itself is down: every DataItem it would have reported is UNAVAILABLE - not a 500, and not old data pretending to be live.
       const timestampMs = Date.now();
-      readings = items.map((item) => sourceUnavailableReading(item.id, item.category, item.type, timestampMs));
+      const known = devicePerRobot ? [...robots.values()].flatMap(reportable) : items;
+      readings = known.map((item) => sourceUnavailableReading(item.id, item.category, item.type, timestampMs));
     }
     const now = Date.now();
     for (const reading of readings) {
@@ -285,34 +360,73 @@ export function buildApp(options: BuildAppOptions = {}): Express {
     res.status(errorStatus(errorCode, httpErrors)).type("application/xml").send(errorXml(errorCode, message));
   }
 
-  function streamsXml(nextSequence: number, observations: Observation[], includeAgent = true): string {
+  /** The device a Streams document is limited to (its own route), or all of them with the agent. */
+  function streamsXml(nextSequence: number, observations: Observation[], scope?: StreamDevice): string {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">
   ${streamsHeader(nextSequence)}
   <Streams>
-${renderDeviceStreams(observations, nodeUuid, includeAgent)}
+${renderDeviceStreams(observations, scope ? [scope] : listedDevices(), scope === undefined)}
   </Streams>
 </MTConnectStreams>
 `;
   }
 
   /** Whether `name` (the first segment of /<device>/probe) names the device this agent serves, by name or by uuid. */
-  const isOurDevice = (name: string): boolean => name === "HydraNode_1" || name === nodeUuid;
+  const legacyDevice: StreamDevice = { name: "HydraNode_1", uuid: nodeUuid, componentId: "hydra_umc_1", owns: (id) => !robotOfItem.has(id) };
+  const robotStream = (robot: RobotDevice): StreamDevice => ({ name: robot.name, uuid: robot.uuid, componentId: robot.id, owns: (id) => robotOfItem.get(id) === robot.key });
+  /** The devices the agent serves now: HydraNode_1, or the robots once the roster is known (HydraNode_1 stands in until then). */
+  const listedDevices = (): StreamDevice[] => (!devicePerRobot || robots.size === 0 ? [legacyDevice] : [...robots.values()].map(robotStream));
+  const findDevice = (name: string): StreamDevice | undefined => listedDevices().find((d) => d.name === name || d.uuid === name);
+  const noDeviceMessage = (name: string): string => {
+    const names = listedDevices().map((d) => d.name);
+    return `this agent serves the device${names.length > 1 ? "s" : ""} ${names.join(", ")}, not ${JSON.stringify(name)}`;
+  };
+  /** Resolves a /<device>/ route, reading the source first when the roster decides what the devices are; null when the answer (an error) was already sent. */
+  const deviceOfRoute = async (req: express.Request, res: express.Response): Promise<StreamDevice | null> => {
+    if (devicePerRobot) await refresh();
+    const name = String(req.params.device);
+    const device = findDevice(name);
+    if (!device) {
+      sendError(res, "NO_DEVICE", noDeviceMessage(name));
+      return null;
+    }
+    return device;
+  };
 
   // GET /probe - the static device model: the agent itself and the HydraNode
   // with the DataItems it exposes. (`<Devices>` is `(Agent, Device+)`: the
   // agent is modelled as a device of its own.)
-  const probeXml = (includeAgent: boolean): string => {
-    const agent = includeAgent
-      ? `    <Agent id="agent" name="Agent" uuid="hydra-umc-mtconnect-adapter">
+  const dataItemXml = (item: DeclaredItem): string => `        ${element("DataItem", [["id", item.id], ["category", item.category], ["type", item.type]])}
+`;
+  const probeXml = (): string => {
+    const agent = `    <Agent id="agent" name="Agent" uuid="hydra-umc-mtconnect-adapter">
       <Description manufacturer="JuanenRac (Electro Hobby 3D)">HYDRA-UMC-MTCONNECT-ADAPTER process</Description>
       <DataItems>
         <DataItem id="${AGENT_AVAILABILITY_ID}" category="EVENT" type="AVAILABILITY"/>
       </DataItems>
     </Agent>
-`
-      : "";
+`;
     const extras = (options.extraItems ?? []).map((item) => `        ${element("DataItem", [["id", item.id], ["category", item.category], ["type", item.type]])}\n`).join("");
+    const robotDevices = [...robots.values()]
+      .map(
+        (robot) => `    <Device id="${robot.id}" name="${robot.name}" uuid="${robot.uuid}">
+      <Description manufacturer="JuanenRac (Electro Hobby 3D)">${escapeXml(`HYDRA-UMC robot ${robot.key}`)}</Description>
+      <DataItems>
+${robot.items.map(dataItemXml).join("")}      </DataItems>
+    </Device>
+`,
+      )
+      .join("");
+    if (devicePerRobot && robots.size > 0) {
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<MTConnectDevices xmlns="urn:mtconnect.org:MTConnectDevices:1.7">
+  ${devicesHeader()}
+  <Devices>
+${agent}${robotDevices}  </Devices>
+</MTConnectDevices>
+`;
+    }
     return `<?xml version="1.0" encoding="UTF-8"?>
 <MTConnectDevices xmlns="urn:mtconnect.org:MTConnectDevices:1.7">
   ${devicesHeader()}
@@ -331,19 +445,19 @@ ${extras}      </DataItems>
 </MTConnectDevices>
 `;
   };
-  app.get("/probe", (_req, res) => {
-    res.type("application/xml").send(probeXml(true));
+  app.get("/probe", async (_req, res) => {
+    if (devicePerRobot) await refresh();
+    res.type("application/xml").send(probeXml());
   });
   // The standard also addresses one device: /<device>/probe (the schema wants the Agent in every Devices document, so it stays in it).
-  app.get("/:device/probe", (req, res) => {
-    const device = String(req.params.device);
-    if (!isOurDevice(device)) return sendError(res, "NO_DEVICE", `this agent serves the device HydraNode_1, not ${JSON.stringify(device)}`);
-    res.type("application/xml").send(probeXml(true));
+  app.get("/:device/probe", async (req, res) => {
+    if ((await deviceOfRoute(req, res)) === null) return;
+    res.type("application/xml").send(probeXml());
   });
 
   // GET /current - the latest observation of every DataItem declared in /probe.
   // GET /current?at=<sequence> - the state as it stood at that sequence.
-  const currentHandler = async (req: express.Request, res: express.Response, includeAgent: boolean): Promise<void> => {
+  const currentHandler = async (req: express.Request, res: express.Response, scope?: StreamDevice): Promise<void> => {
     const atRaw = req.query.at;
     let at: number | undefined;
     if (atRaw !== undefined) {
@@ -360,13 +474,12 @@ ${extras}      </DataItems>
       return;
     }
     const observations = at === undefined ? buffer.current() : buffer.currentAt(at);
-    res.type("application/xml").send(streamsXml(buffer.nextSequence, observations, includeAgent));
+    res.type("application/xml").send(streamsXml(buffer.nextSequence, observations, scope));
   };
-  app.get("/current", (req, res) => currentHandler(req, res, true));
-  app.get("/:device/current", (req, res) => {
-    const device = String(req.params.device);
-    if (!isOurDevice(device)) return sendError(res, "NO_DEVICE", `this agent serves the device HydraNode_1, not ${JSON.stringify(device)}`);
-    return currentHandler(req, res, false);
+  app.get("/current", (req, res) => currentHandler(req, res));
+  app.get("/:device/current", async (req, res) => {
+    const device = await deviceOfRoute(req, res);
+    if (device !== null) await currentHandler(req, res, device);
   });
 
   // GET /sample?from=<sequence>&count=<n> - the observations with sequence >=
@@ -375,7 +488,7 @@ ${extras}      </DataItems>
   // `from` older than the oldest observation still held, or beyond
   // nextSequence, is an OUT_OF_RANGE error: it never gets a silent mix of old
   // and new data.
-  const sampleHandler = async (req: express.Request, res: express.Response, includeAgent: boolean): Promise<void> => {
+  const sampleHandler = async (req: express.Request, res: express.Response, scope?: StreamDevice): Promise<void> => {
     const fromRaw = req.query.from;
     let from: number | undefined;
     if (fromRaw !== undefined) {
@@ -401,6 +514,22 @@ ${extras}      </DataItems>
       count = parsed;
     }
 
+    // `interval` turns the answer into a stream: the same document again every `interval` milliseconds, from where the last one ended.
+    const intervalRaw = req.query.interval;
+    let interval: number | undefined;
+    if (intervalRaw !== undefined) {
+      const parsed = Number(intervalRaw);
+      if (typeof intervalRaw !== "string" || intervalRaw.trim() === "" || !Number.isInteger(parsed) || parsed < 0) {
+        sendError(res, "INVALID_REQUEST", `'interval' must be a non-negative integer (milliseconds), got ${JSON.stringify(intervalRaw)}`);
+        return;
+      }
+      if (parsed > MAX_STREAM_INTERVAL_MS) {
+        sendError(res, "OUT_OF_RANGE", `'interval' must be at most ${MAX_STREAM_INTERVAL_MS}, got ${parsed}`);
+        return;
+      }
+      interval = parsed;
+    }
+
     // Read (or take the cached read) first, so every decision below sees the buffer in its final state for this request.
     await refresh();
 
@@ -414,14 +543,66 @@ ${extras}      </DataItems>
       return;
     }
 
+    if (interval !== undefined) {
+      if (openStreams >= maxStreams) {
+        res.status(503).type("text/plain").send(`too many open streams (the limit is ${maxStreams})`);
+        return;
+      }
+      streamSample(res, from ?? first, count, Math.max(interval, minStreamIntervalMs), scope);
+      return;
+    }
+
     const result = buffer.since(from ?? first, count);
-    res.type("application/xml").send(streamsXml(result.nextSequence, result.observations, includeAgent));
+    res.type("application/xml").send(streamsXml(result.nextSequence, result.observations, scope));
   };
-  app.get("/sample", (req, res) => sampleHandler(req, res, true));
-  app.get("/:device/sample", (req, res) => {
-    const device = String(req.params.device);
-    if (!isOurDevice(device)) return sendError(res, "NO_DEVICE", `this agent serves the device HydraNode_1, not ${JSON.stringify(device)}`);
-    return sampleHandler(req, res, false);
+
+  /**
+   * GET /sample?interval=<ms>: a multipart/x-mixed-replace answer that keeps
+   * the connection open. Every part is a Streams document with the changes
+   * since the previous part (an empty one when there are none, which is also
+   * the heartbeat); the stream ends when the client closes it or when the
+   * position it continues from has left the buffer.
+   */
+  function streamSample(res: express.Response, startAt: number, count: number, intervalMs: number, scope?: StreamDevice): void {
+    openStreams++;
+    let cursor = startAt;
+    let closed = false;
+    let timer: NodeJS.Timeout | undefined;
+    const finish = (): void => {
+      if (closed) return;
+      closed = true;
+      if (timer) clearTimeout(timer);
+      openStreams--;
+      if (!res.writableEnded) res.end();
+    };
+    res.on("close", finish);
+    res.status(200).set({
+      "Content-Type": `multipart/x-mixed-replace;boundary=${STREAM_BOUNDARY}`,
+      "Cache-Control": "no-cache, private",
+      Connection: "keep-alive",
+    });
+    res.flushHeaders();
+    const tick = async (): Promise<void> => {
+      if (closed) return;
+      try {
+        await refresh();
+        if (closed) return;
+        if (cursor < buffer.firstSequence) return finish(); // the client fell behind the buffer: it must ask again
+        const result = buffer.since(cursor, count);
+        cursor = result.nextSequence;
+        const body = streamsXml(result.nextSequence, result.observations, scope);
+        res.write(`--${STREAM_BOUNDARY}\r\nContent-type: text/xml\r\nContent-length: ${Buffer.byteLength(body)}\r\n\r\n${body}\r\n`);
+      } catch {
+        return finish();
+      }
+      if (!closed) timer = setTimeout(() => void tick(), intervalMs);
+    };
+    void tick();
+  }
+  app.get("/sample", (req, res) => sampleHandler(req, res));
+  app.get("/:device/sample", async (req, res) => {
+    const device = await deviceOfRoute(req, res);
+    if (device !== null) await sampleHandler(req, res, device);
   });
 
   return app;

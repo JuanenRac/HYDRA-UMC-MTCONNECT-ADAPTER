@@ -62,6 +62,8 @@ export interface HydraServerMachineReaderOptions {
    * found in the live roster (this adapter models exactly one HydraNode,
    * matching /probe's own single-Device shape). */
   robotId?: number;
+  /** Report every robot of the roster (or only `robotId` when it is set) as a device of its own: each reading carries a `deviceKey` and the ids of its DataItems are prefixed `robot_<id>_`. Off by default: one robot, one HydraNode_1. */
+  perRobot?: boolean;
   /** Injectable for real tests against a local http.Server instead of a
    * live HYDRA-UMC-SERVER - defaults to the real global fetch (stable
    * since Node 18, already this repo's own minimum). */
@@ -118,6 +120,7 @@ export async function readJsonCapped(response: Response, maxBytes: number = MAX_
 export class HydraServerMachineReader implements MachineReader {
   private readonly baseUrl: string;
   private readonly robotId?: number;
+  private readonly perRobot: boolean;
   private readonly fetchImpl: typeof fetch;
   private readonly requestTimeoutMs: number;
   private token: string | undefined;
@@ -130,6 +133,7 @@ export class HydraServerMachineReader implements MachineReader {
     this.password = options.password || undefined;
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.robotId = options.robotId;
+    this.perRobot = options.perRobot ?? false;
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   }
@@ -199,6 +203,17 @@ export class HydraServerMachineReader implements MachineReader {
       throw new Error(`HYDRA-UMC-SERVER replied with HTTP ${response.status}`);
     }
     const body = (await readJsonCapped(response)) as HydraSettingsResponse;
+    if (this.perRobot) {
+      const robots = findRobots(body, this.robotId);
+      if (robots.length === 0 && this.robotId !== undefined) {
+        throw new Error(`no robot with id ${this.robotId} in HYDRA-UMC-SERVER's own live roster`);
+      }
+      const at = Date.now();
+      return robots.flatMap((r) => [
+        { id: `robot_${r.id}_avail`, category: "EVENT" as const, type: "AVAILABILITY", value: r.online ? "AVAILABLE" : "UNAVAILABLE", timestampMs: at, deviceKey: String(r.id) },
+        { id: `robot_${r.id}_execution`, category: "EVENT" as const, type: "EXECUTION", value: r.online ? deriveExecution(r.playbackState) : "UNAVAILABLE", timestampMs: at, deviceKey: String(r.id) },
+      ]);
+    }
     const robot = findRobot(body, this.robotId);
     if (!robot) {
       throw new Error(
@@ -216,6 +231,11 @@ export class HydraServerMachineReader implements MachineReader {
       { id: "spindle_temp", category: "SAMPLE", type: "TEMPERATURE", value: null, timestampMs },
     ];
   }
+}
+
+function findRobots(body: HydraSettingsResponse, robotId: number | undefined): HydraRobot[] {
+  const allRobots = (body.controllers ?? []).flatMap((controller) => controller.robots ?? []);
+  return robotId !== undefined ? allRobots.filter((robot) => robot.id === robotId) : allRobots;
 }
 
 function findRobot(body: HydraSettingsResponse, robotId: number | undefined): HydraRobot | undefined {

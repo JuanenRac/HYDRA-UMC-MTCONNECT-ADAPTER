@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="Standard">
   <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="Format">
-  <img src="https://img.shields.io/badge/Tests-136%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-161%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**诚实核查 - 今天真正能运行的部分：** 单位换算(`src/units.ts`)、质量/时间戳/错误码映射(`src/dataitem.ts`)、轮询/缓存(`src/reader.ts`)、由真实 HYDRA-UMC-SERVER 支持的机器读取器(`src/hydraServerReader.ts`)，以及 HTTP 服务器(`src/server.ts`)都是真实的并经过测试(13 个文件共 136 个测试通过，其中包括通过 `supertest` 对一个真实监听套接字发出的真实 HTTP 请求——而不仅仅是编译检查)。设备模型被硬编码为恰好一个 HydraNode(`hydra_umc_1`)——这证明了 HTTP 接口和 XML 结构从端到端都符合规范，但一个真正监控多台机器人的部署需要根据 HYDRA-UMC-SERVER 自身的实时机器人列表来生成，而这一点目前尚未实现。所输出的 XML 已经过验证，结构符合规范(命名空间、`Device`/`DataItem` id、共享的 `instanceId`),但尚未针对真实的第三方 MTConnect Agent 或采集器进行过实际联调测试。具体已交付的内容请见 `CHANGELOG.md`。
+**诚实核查 - 今天真正能运行的部分：** 单位换算(`src/units.ts`)、质量/时间戳/错误码映射(`src/dataitem.ts`)、轮询/缓存(`src/reader.ts`)、由真实 HYDRA-UMC-SERVER 支持的机器读取器(`src/hydraServerReader.ts`)，以及 HTTP 服务器(`src/server.ts`)都是真实的并经过测试(16 个文件共 161 个测试通过，其中包括通过 `supertest` 对一个真实监听套接字发出的真实 HTTP 请求——而不仅仅是编译检查)。默认情况下设备模型是一个 HydraNode（`hydra_umc_1`）；设置 `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` 后，会根据 HYDRA-UMC-SERVER 自身的实时机器人列表为每台机器人生成一个 Device（已用模拟列表测试）。所输出的 XML 已经过验证，结构符合规范(命名空间、`Device`/`DataItem` id、共享的 `instanceId`),但尚未针对真实的第三方 MTConnect Agent 或采集器进行过实际联调测试。具体已交付的内容请见 `CHANGELOG.md`。
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | 版本 | `0.2.0` |
 | 成熟度 | 可用 |
-| 测试 | 136 (`npm test`) |
+| 测试 | 161 (`npm test`) |
 | 技术栈 | Node.js / Express / MTConnect 1.7 XML |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
@@ -55,7 +55,7 @@ GPL-3.0-or-later - see LICENSE
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟢 | 136 项自动测试，每次变更都会运行 |
+| 测试 | 🟢 | 161 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 文档 | 🟢 | 八种语言的 README，每次变更都会与清单核对 |
 
@@ -69,7 +69,7 @@ GPL-3.0-or-later - see LICENSE
 监控 HydraNode 的执行状态、可用性和主轴温度。
 
 ### 关键特性：
-* 🏭 **标准化机器数据：** 将一个 HydraNode 暴露为符合 MTConnect 标准的设备。*（目前固定为恰好一个 HydraNode——`hydra_umc_1`，详见 `docs/API.md`；这证明了 HTTP 接口与 XML 形态端到端符合规范——真实部署会从 HYDRA-UMC-SERVER 自身的实时机器人列表生成这一部分）*
+* 🏭 **标准化机器数据：** 将一个 HydraNode 暴露为符合 MTConnect 标准的设备。*（默认一个 HydraNode（`hydra_umc_1`）；设置 `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` 后为 HYDRA-UMC-SERVER 实时列表中的每台机器人生成一个 Device — 见 `docs/API.md`）*
 * 📄 **XML 数据流：** `GET /current` 中真实的、经轮询得到的 `<Events>`/`<Samples>` 块，采用标准 XML 格式。*(已实现)*
 * 🔌 **真实机器数据源：** `HydraServerMachineReader`(`src/hydraServerReader.ts`、`HYDRA_UMC_SERVER_URL`)会轮询真实运行中的 HYDRA-UMC-SERVER 自身的 `GET /api/settings`,并报告某台真实机器人的真实状态(`AVAILABLE`/`ACTIVE`/`INTERRUPTED`/`STOPPED`/`READY`)——不仅仅是 `FixtureMachineReader` 兜底方案。详见 `docs/API.md`。*(已实现)*
 * 🌐 **HTTP 接口：** 可通过简单的 RESTful 查询访问，便于集成。*(已实现)*
@@ -81,6 +81,8 @@ GPL-3.0-or-later - see LICENSE
 * 🧩 **状态、按设备的路由与 HTTP 状态码：** CONDITION 类型的 DataItem 以 Normal、Warning、Fault 或 Unavailable 输出（带消息和原生代码），设备拥有时会在 `/probe` 中声明；设备声明了 `ASSET_CHANGED` 和 `ASSET_REMOVED`（它没有资产，所以保持 UNAVAILABLE）；`/HydraNode_1/probe`、`/current` 和 `/sample` 针对该设备应答；`HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` 让 MTConnectError 携带 HTTP 400 或 404 而不是 200（默认关闭）。全部已用官方 XSD 校验。 *(已实现)*
 * 🔌 **面向 cppagent 的 SHDR 输出：** 设置 `HYDRA_UMC_MTCONNECT_SHDR_PORT` 后，适配器还会通过 TCP 以 SHDR 行（`时间|dataItemId|值`，状态为 `时间|id|级别|原生代码|||消息`）提供相同的观测值，现成的 MTConnect 代理即可读取。客户端先收到每个 DataItem 的最新值，随后收到每次变化；它唯一可以发送的行是 `* PING`，回复 `* PONG`。只读。除非 `HYDRA_UMC_MTCONNECT_SHDR_HOST` 另行指定，否则监听 `127.0.0.1`。已用模拟代理测试。 *(已实现，尚未用真实 cppagent 试过)*
 * 🔌 **读取 CNC 桥接的 SHDR 数据流(可选):** 设置 `HYDRA_UMC_MTCONNECT_SHDR_SOURCE=host:port` 后，代理从另一个适配器的 SHDR 输出获取机床的执行状态和可用性；连接丢失时，所有 DataItem 显示为不可用，而不是最后一次的值。只读。
+* 🤖 **每台机器人一个 Device（可选）：** 设置 `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` 后，设备模型跟随 HYDRA-UMC-SERVER 的实时机器人列表：每台机器人一个 Device `Robot_<id>`，带有自己的 `execution` 和 `avail` 以及不会冲突的 id（`robot_<id>_execution`）；新出现的机器人会被声明，离开的机器人变为 UNAVAILABLE，`/Robot_<id>/current` 只回答一台机器人。默认关闭：单一的 `HydraNode_1` 保持原样。*（已实现，已用模拟列表测试）*
+* ⏪ **历史与实时流：** `GET /current?at=<sequence>` 返回设备在较早序列号时的状态，`GET /sample?interval=<ms>` 保持连接打开，每个间隔发送一个包含新观测的 multipart 部分（空部分即心跳），并有打开流的上限（`MTCONNECT_MAX_STREAMS`）和最小间隔（`MTCONNECT_MIN_STREAM_INTERVAL_MS`）。*（已实现）*
 
 ## 🧩 在 HYDRA-UMC 中的角色
 
@@ -135,7 +137,7 @@ curl http://127.0.0.1:5000/probe
 
 ## 🧪 测试
 
-运行 `npm test` 会执行 136 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
+运行 `npm test` 会执行 161 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
 
 CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
 

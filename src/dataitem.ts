@@ -37,6 +37,8 @@ export interface RawReading {
   message?: string;
   /** CONDITION only: the source's own code for the condition. */
   nativeCode?: string;
+  /** Which device of a one-device-per-robot deployment the reading belongs to (the robot id). Absent: the single HydraNode_1 device. */
+  deviceKey?: string;
 }
 
 /** The real, MTConnect-ready result of mapping one RawReading. */

@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="Standard">
   <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="Format">
-  <img src="https://img.shields.io/badge/Tests-136%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-161%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**正直な現状確認 - 今日実際に動くもの:** 単位変換(`src/units.ts`)、品質/タイムスタンプ/エラーコードのマッピング(`src/dataitem.ts`)、ポーリング/キャッシュ(`src/reader.ts`)、本物の HYDRA-UMC-SERVER に基づくマシンリーダー(`src/hydraServerReader.ts`)、そして HTTP サーバー(`src/server.ts`)はすべて本物であり、テスト済みである(13 ファイルにわたり 136 件のテストが成功しており、`supertest` を使った本物のリスニングソケットに対する本物の HTTP リクエストも含まれる——単なるコンパイルチェックではない)。デバイスモデルはちょうど 1 台の HydraNode(`hydra_umc_1`)にハードコードされている——これは HTTP インターフェースと XML の形状がエンドツーエンドで仕様に正しく準拠していることを証明しているが、複数台のロボットを監視する実際のデプロイでは HYDRA-UMC-SERVER 自身のライブなロボット一覧からこれを生成する必要があり、それはまだ行われていない。出力される XML は仕様に沿った形状(名前空間、`Device`/`DataItem` の id、共有される `instanceId`)であることが検証済みだが、実際のサードパーティ製 MTConnect Agent やコレクターに対してライブでテストされたことはまだない。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
+**正直な現状確認 - 今日実際に動くもの:** 単位変換(`src/units.ts`)、品質/タイムスタンプ/エラーコードのマッピング(`src/dataitem.ts`)、ポーリング/キャッシュ(`src/reader.ts`)、本物の HYDRA-UMC-SERVER に基づくマシンリーダー(`src/hydraServerReader.ts`)、そして HTTP サーバー(`src/server.ts`)はすべて本物であり、テスト済みである(16 ファイルにわたり 161 件のテストが成功しており、`supertest` を使った本物のリスニングソケットに対する本物の HTTP リクエストも含まれる——単なるコンパイルチェックではない)。既定ではデバイスモデルは 1 台の HydraNode（`hydra_umc_1`）ですが、`HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` を設定すると、HYDRA-UMC-SERVER 自身のライブなロボット一覧からロボットごとに 1 つの Device を生成します（模擬した一覧でテスト済み）。出力される XML は仕様に沿った形状(名前空間、`Device`/`DataItem` の id、共有される `instanceId`)であることが検証済みだが、実際のサードパーティ製 MTConnect Agent やコレクターに対してライブでテストされたことはまだない。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | バージョン | `0.2.0` |
 | 成熟度 | 機能する |
-| テスト | 136 (`npm test`) |
+| テスト | 161 (`npm test`) |
 | 技術 | Node.js / Express / MTConnect 1.7 XML |
 | 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
@@ -55,7 +55,7 @@ GPL-3.0-or-later - see LICENSE
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
 | ソフトウェア | 🟡 | 主な目的では動作します。足りない点は上の正直さの確認に書かれています |
-| テスト | 🟢 | 自動テスト 136 件。変更のたびに実行されます |
+| テスト | 🟢 | 自動テスト 161 件。変更のたびに実行されます |
 | 実機 | 🔴 | まだです：このバージョンについて実機での動作記録はありません |
 | ドキュメント | 🟢 | 8 言語の README。変更のたびにマニフェストと照合されます |
 
@@ -70,7 +70,7 @@ GPL-3.0-or-later - see LICENSE
 実行状態、可用性、主軸温度を監視できるようにします。
 
 ### 主な機能：
-* 🏭 **標準化されたマシンデータ：** 1 台の HydraNode を MTConnect 準拠デバイスとして公開します。*（現在は正確に 1 台の HydraNode - `hydra_umc_1` - に固定されています。詳細は `docs/API.md` を参照。HTTP サーフェスと XML 形式がエンドツーエンドで仕様どおり正しいことを証明するものです。実運用では HYDRA-UMC-SERVER 自身のライブなロボット一覧からこれを生成します）*
+* 🏭 **標準化されたマシンデータ：** 1 台の HydraNode を MTConnect 準拠デバイスとして公開します。*（既定では 1 台の HydraNode（`hydra_umc_1`）、`HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` では HYDRA-UMC-SERVER のライブなロボット一覧のロボットごとに 1 つの Device — `docs/API.md` 参照）*
 * 📄 **XML データストリーム：** `GET /current` の実際にポーリングされる `<Events>`/`<Samples>` ブロックを標準の XML 形式で提供します。*(実装済み)*
 * 🔌 **実際のマシンソース：** `HydraServerMachineReader`（`src/hydraServerReader.ts`、`HYDRA_UMC_SERVER_URL`）は実際に稼働している HYDRA-UMC-SERVER 自身の `GET /api/settings` をポーリングし、実際のロボット1台の実際の状態（`AVAILABLE`/`ACTIVE`/`INTERRUPTED`/`STOPPED`/`READY`）を報告します - `FixtureMachineReader` フォールバックだけではありません。詳細は `docs/API.md` を参照。*(実装済み)*
 * 🌐 **HTTP インターフェース：** 簡単な RESTful クエリでアクセス可能で、統合が容易です。*(実装済み)*
@@ -82,6 +82,8 @@ GPL-3.0-or-later - see LICENSE
 * 🧩 **コンディション・デバイス別ルート・HTTP ステータス:** CONDITION の DataItem は Normal、Warning、Fault、Unavailable として(メッセージとネイティブコード付きで)出力され、デバイスが持つ場合は `/probe` で宣言されます。デバイスは `ASSET_CHANGED` と `ASSET_REMOVED` を宣言します(アセットはないので UNAVAILABLE のままです)。`/HydraNode_1/probe`、`/current`、`/sample` はそのデバイスについて応答します。`HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1` は MTConnectError に 200 の代わりに HTTP 400 または 404 を付けます(既定では無効)。すべて公式 XSD で検証済みです。 *(実装済み)*
 * 🔌 **cppagent 向け SHDR 出力:** `HYDRA_UMC_MTCONNECT_SHDR_PORT` を設定すると、アダプターは同じ観測値を SHDR 行(`時刻|dataItemId|値`、コンディションは `時刻|id|レベル|ネイティブコード|||メッセージ`)として TCP でも提供し、市販の MTConnect エージェントが読み取れます。クライアントはまず各 DataItem の最新値を受け取り、その後は変更のたびに受け取ります。送信できる行は `* PING` のみで、`* PONG` が返ります。読み取り専用です。`HYDRA_UMC_MTCONNECT_SHDR_HOST` で指定しない限り `127.0.0.1` で待ち受けます。模擬エージェントでテスト済みです。 *(実装済み、実際の cppagent では未確認)*
 * 🔌 **CNC ブリッジの SHDR ストリームを読む(任意):** `HYDRA_UMC_MTCONNECT_SHDR_SOURCE=host:port` を設定すると、エージェントは別のアダプターの SHDR 出力から機械の実行状態と可用性を取得します。接続が切れると、最後の値ではなくすべての DataItem を利用不可として示します。読み取り専用です。
+* 🤖 **ロボットごとに 1 つの Device（オプション）：** `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` を設定すると、デバイスモデルが HYDRA-UMC-SERVER のライブなロボット一覧に従い、ロボットごとに Device `Robot_<id>` を独自の `execution` と `avail`、衝突しない id（`robot_<id>_execution`）で宣言します。現れたロボットは宣言され、いなくなったロボットは UNAVAILABLE になり、`/Robot_<id>/current` は 1 台分を返します。既定では無効で、単一の `HydraNode_1` は従来どおりです。*（実装済み、模擬した一覧でテスト済み）*
+* ⏪ **履歴とライブストリーム：** `GET /current?at=<sequence>` は以前のシーケンス時点のデバイスの状態を返し、`GET /sample?interval=<ms>` は接続を開いたままにして、間隔ごとに新しい観測を含む multipart のパートを送ります（空のパートがハートビート）。開いているストリーム数の上限（`MTCONNECT_MAX_STREAMS`）と最小間隔（`MTCONNECT_MIN_STREAM_INTERVAL_MS`）があります。*（実装済み）*
 
 ## 🧩 HYDRA-UMC での役割
 
@@ -136,7 +138,7 @@ curl http://127.0.0.1:5000/probe
 
 ## 🧪 テスト
 
-`npm test` で自動テスト 136 件を実行します。 ハードウェアも、このマシンの外にあるものも必要ありません。
+`npm test` で自動テスト 161 件を実行します。 ハードウェアも、このマシンの外にあるものも必要ありません。
 
 CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
 

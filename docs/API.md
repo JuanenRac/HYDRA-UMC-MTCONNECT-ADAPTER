@@ -18,7 +18,7 @@ All endpoints share one `Header` block (`creationTime`, `instanceId`, `bufferSiz
 
 ## `GET /probe`
 
-The static device model: the agent itself (the schema models it as a device of its own, with an `agent_avail` DataItem) and the HydraNodes with the `DataItem`s each one exposes. **Currently exactly one HydraNode** (`hydra_umc_1`); a deployment that monitors several robots would generate one device per robot from HYDRA-UMC-SERVER's roster, which is not done yet.
+The static device model: the agent itself (the schema models it as a device of its own, with an `agent_avail` DataItem) and the HydraNodes with the `DataItem`s each one exposes. **By default exactly one HydraNode** (`hydra_umc_1`). With `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` (and `HYDRA_UMC_SERVER_URL`) it generates one device per robot of HYDRA-UMC-SERVER's roster instead, see "One device per robot" below.
 
 **Response** - `200`, `Content-Type: application/xml`:
 
@@ -54,6 +54,10 @@ The device declares `ASSET_CHANGED` and `ASSET_REMOVED`, which MTConnect asks of
 ### One device
 
 `GET /<device>/probe`, `/<device>/current` and `/<device>/sample` answer for one device, named by its `name` (`HydraNode_1`) or its `uuid`. `/probe` keeps the Agent in the document, which the schema requires of every `Devices` element; `/current` and `/sample` leave the agent's own stream out. Any other name is a `NO_DEVICE` error. The bare routes describe the agent and the device, as before.
+
+### One device per robot
+
+With `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` the model follows the roster of HYDRA-UMC-SERVER (`HYDRA_UMC_ROBOT_ID` keeps only that robot). Every robot is a Device `Robot_<id>` (`id="hydra_umc_robot_<id>"`, `uuid="hydra-umc-robot-<id>"`) whose DataItem ids carry the robot (`robot_<id>_execution`, `robot_<id>_avail`, `robot_<id>_asset_chg`, `robot_<id>_asset_rem`), so ids never collide inside the agent. `HydraNode_1` is not served any more once a robot is known (until then it stands in, so the document stays valid). A robot that appears later is declared and `deviceModelChangeTime` moves; one that leaves the roster turns `UNAVAILABLE`; a source that is down turns every robot `UNAVAILABLE`. `/Robot_<id>/probe`, `/current` and `/sample` answer for one robot (by name or uuid); any other name is `NO_DEVICE`, and its message lists the robots served. The SHDR output, if on, keeps the same ids. Off by default: with the variable unset the documents are exactly the single-device ones above.
 
 ---
 
@@ -150,6 +154,10 @@ GET /sample?from=11          -> (nothing new yet) empty Streams, nextSequence="1
   </Errors>
 </MTConnectError>
 ```
+
+### Streaming: `GET /sample?interval=<ms>`
+
+With `interval` the answer is a `multipart/x-mixed-replace` stream (boundary `hydra_umc_mtconnect_boundary`) that stays open. Each part is a `MTConnectStreams` document with the observations since the previous part, starting at `from` (or `firstSequence`), at most `count` per part; a part with none is the heartbeat. The stream ends when the client closes it, or when the position it continues from has left the buffer (ask again from `firstSequence`). `interval` is in milliseconds, at least `MTCONNECT_MIN_STREAM_INTERVAL_MS` (default 100); a malformed one is `INVALID_REQUEST` and one above 2147483647 `OUT_OF_RANGE`. At most `MTCONNECT_MAX_STREAMS` (default 8) streams are open at once; one more gets `503`. `from` and `count` are checked before the stream starts, so they answer with the ordinary error document.
 
 ---
 
