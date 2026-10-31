@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="Standard">
   <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="Format">
   <img src="https://img.shields.io/badge/Tests-161%20passing-2ea44f.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/Version-0.2.0-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.2.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| Versão | `0.2.0` |
+| Versão | `0.2.1` |
 | Maturidade | Funcional |
 | Testes | 161 (`npm test`) |
 | Tecnologia | Node.js / Express / MTConnect 1.7 XML |

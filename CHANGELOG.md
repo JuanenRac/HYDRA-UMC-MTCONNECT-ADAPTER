@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.2.1] - The state at a given sequence, one Device per robot, a streaming sample interval and updated dependencies
+
 - **Dependencies with known vulnerabilities are updated:** the request-body parser, the query-string parser and the proxy-address check move to their patched releases inside the same major version (a spoofing fix for trusted proxies and denial-of-service fixes); only the lock file changes.
 - **`GET /current?at=<sequence>`:** the state of the device as it stood at an earlier sequence (also on the per-device route); an `at` outside the buffer is `OUT_OF_RANGE`, a malformed one `INVALID_REQUEST`..
 - **One Device per robot (optional):** with `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` the device model follows HYDRA-UMC-SERVER's live roster: a `Robot_<id>` Device per robot (`HYDRA_UMC_ROBOT_ID` narrows it to one) with its own `execution` and `avail` and ids that cannot collide (`robot_<id>_execution`). A robot that appears is declared and the device model change time moves, one that leaves the roster turns UNAVAILABLE, and a source that is down turns every robot UNAVAILABLE. `/Robot_<id>/probe`, `/current` and `/sample` answer for one robot, by name or uuid. Off by default: the single `HydraNode_1` is served exactly as before, which tests that pin the documents byte for byte now guard.
