@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Development tools brought to their current major versions:** Vitest 5, TypeScript 7 and Node.js 22 for the tests and the CI. The typecheck, the 161 tests and the bundle pass.
+
 ## [0.2.1] - The state at a given sequence, one Device per robot, a streaming sample interval and updated dependencies
 
 - **Dependencies with known vulnerabilities are updated:** the request-body parser, the query-string parser and the proxy-address check move to their patched releases inside the same major version (a spoofing fix for trusted proxies and denial-of-service fixes); only the lock file changes.
