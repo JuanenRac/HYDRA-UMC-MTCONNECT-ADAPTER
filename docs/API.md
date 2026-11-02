@@ -175,6 +175,10 @@ With `HYDRA_UMC_MTCONNECT_SHDR_SOURCE` set to `host:port` (or only a port, meani
 
 The `execution` values of the source are passed on word for word. In particular `STOPPED` (the machine waits for its operator to reset it) stays `STOPPED`: it is neither `READY` nor a pause (`INTERRUPTED`, `FEED_HOLD`), and the adapter never turns it into either.
 
+### DataItems of a CNC
+
+With `HYDRA_UMC_MTCONNECT_CNC_ITEMS=1` the device also declares `estop` (EVENT `EMERGENCY_STOP`), `door` (EVENT `DOOR_STATE`), `spindle_speed` (SAMPLE `SPINDLE_SPEED`, `REVOLUTION/MINUTE`), `path_feedrate` (SAMPLE `PATH_FEEDRATE`, `MILLIMETER/SECOND`; the bridge reports mm/min and the reader converts) and `system` (CONDITION `SYSTEM`), and the SHDR source reader keeps them from the stream. A condition line is `time|id|LEVEL|nativeCode|||message` (a pipe in the message is written `\|`); a sample the bridge does not know arrives as `UNAVAILABLE` and stays unavailable. Without the variable none of this is declared and the reader keeps only `execution` and `avail`.
+
 ## SHDR output
 
 With `HYDRA_UMC_MTCONNECT_SHDR_PORT` set to a port, the adapter also listens for TCP connections speaking SHDR, the adapter-side protocol of an MTConnect agent (for example cppagent, whose `Adapters` entry points at this host and port). The address defaults to `127.0.0.1`; `HYDRA_UMC_MTCONNECT_SHDR_HOST` changes it. At most 16 clients are served.

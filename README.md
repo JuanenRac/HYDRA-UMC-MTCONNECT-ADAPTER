@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="Standard">
   <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="Format">
-  <img src="https://img.shields.io/badge/Tests-161%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-169%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**Honesty check - what actually runs today:** unit conversion (`src/units.ts`), quality/timestamp/error-code mapping (`src/dataitem.ts`), polling/caching (`src/reader.ts`), the real HYDRA-UMC-SERVER-backed machine reader (`src/hydraServerReader.ts`), and the HTTP server (`src/server.ts`) are all real and tested (161 tests passing across 16 files, including real HTTP requests over a real listening socket via `supertest` - not just a compile check). By default the device model is one HydraNode (`hydra_umc_1`); with `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` it generates one Device per robot from HYDRA-UMC-SERVER's own live roster (tested against a simulated roster). The emitted XML has been verified for spec-correct shape (namespaces, `Device`/`DataItem` ids, a shared `instanceId`) but has not yet been tested live against a real third-party MTConnect Agent or collector. See `CHANGELOG.md` for exactly what has shipped so far.
+**Honesty check - what actually runs today:** unit conversion (`src/units.ts`), quality/timestamp/error-code mapping (`src/dataitem.ts`), polling/caching (`src/reader.ts`), the real HYDRA-UMC-SERVER-backed machine reader (`src/hydraServerReader.ts`), and the HTTP server (`src/server.ts`) are all real and tested (169 tests passing across 16 files, including real HTTP requests over a real listening socket via `supertest` - not just a compile check). By default the device model is one HydraNode (`hydra_umc_1`); with `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` it generates one Device per robot from HYDRA-UMC-SERVER's own live roster (tested against a simulated roster). The emitted XML has been verified for spec-correct shape (namespaces, `Device`/`DataItem` ids, a shared `instanceId`) but has not yet been tested live against a real third-party MTConnect Agent or collector. See `CHANGELOG.md` for exactly what has shipped so far.
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.2.1` |
 | Maturity | Functional |
-| Tests | 161 (`npm test`) |
+| Tests | 169 (`npm test`) |
 | Stack | Node.js / Express / MTConnect 1.7 XML |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
 | On real hardware | Not applicable: nothing here runs on hardware |
@@ -55,7 +55,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Software | 🟡 | Works for its main purpose; the honesty check above lists what is still missing |
-| Tests | 🟢 | 161 automated tests, run on every change |
+| Tests | 🟢 | 169 automated tests, run on every change |
 | Real hardware | 🟢 | Not applicable: nothing here runs on hardware |
 | Interface and protocols | 🟡 | The routes or messages it offers are documented and tested with a client; not every client has used them yet |
 | Integration | 🟡 | Its messages and routes are checked against the shared contracts of the SDK; it has not run together with the real equipment |
@@ -86,6 +86,7 @@ It provides a read-only XML/HTTP interface that allows traditional industrial so
 * 🔌 **Reads the SHDR stream of the CNC bridge (optional):** with `HYDRA_UMC_MTCONNECT_SHDR_SOURCE=host:port` the agent sources the execution and the availability of the machine from the SHDR output of another adapter; a lost connection shows every DataItem as unavailable instead of the last values. Read only.
 * 🤖 **One Device per robot (optional):** with `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` the device model follows HYDRA-UMC-SERVER's live roster: a Device `Robot_<id>` per robot with its own `execution` and `avail` and ids that cannot collide (`robot_<id>_execution`); a robot that appears is declared, one that leaves turns UNAVAILABLE, and `/Robot_<id>/current` answers for one robot. Off by default: the single `HydraNode_1` stays as it was. *(implemented, tested against a simulated roster)*
 * ⏪ **History and live stream:** `GET /current?at=<sequence>` returns the state of the device as it stood at an earlier sequence, and `GET /sample?interval=<ms>` keeps the connection open and sends a multipart part with the new observations every interval (an empty part is the heartbeat), with a limit of open streams (`MTCONNECT_MAX_STREAMS`) and a minimum interval (`MTCONNECT_MIN_STREAM_INTERVAL_MS`). *(implemented)*
+* 🔌 **DataItems of a CNC (optional, off by default):** with `HYDRA_UMC_MTCONNECT_CNC_ITEMS=1` the device also declares `estop` (`EMERGENCY_STOP`), `door` (`DOOR_STATE`), `spindle_speed` (`SPINDLE_SPEED`, `REVOLUTION/MINUTE`), `path_feedrate` (`PATH_FEEDRATE`, `MILLIMETER/SECOND`, converted from the mm/min the bridge reports) and a `system` condition, and the SHDR source reader feeds them from the stream of `HYDRA-UMC-BRIDGE-CNC` (conditions with their code and message; a value the bridge does not know stays unavailable). Without it the device is exactly the one it was. Read only. *(implemented, tested against the MTConnect 1.7 schemas and a simulated stream; not yet tried with a real cppagent or a CNC)*
 
 ## 🧩 Role in HYDRA-UMC
 
@@ -139,7 +140,7 @@ curl http://127.0.0.1:5000/probe
 
 ## 🧪 Testing
 
-161 automated tests run with `npm test`. They need no hardware and nothing outside this machine.
+169 automated tests run with `npm test`. They need no hardware and nothing outside this machine.
 
 The CI runs `HYDRA_UMC_CI=1 python tools/ci_validate.py`, which checks the manifest, the documents, the eight READMEs and the pictures.
 

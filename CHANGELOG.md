@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **DataItems of a CNC (off by default):** with `HYDRA_UMC_MTCONNECT_CNC_ITEMS=1` (or `cncItems: true` in `buildApp`) the device also declares `estop` (`EMERGENCY_STOP`), `door` (`DOOR_STATE`), `spindle_speed` (`SPINDLE_SPEED`, `REVOLUTION/MINUTE`), `path_feedrate` (`PATH_FEEDRATE`, `MILLIMETER/SECOND`) and a `system` condition, and the SHDR source reader keeps them from the stream of HYDRA-UMC-BRIDGE-CNC, condition lines with their code and message included. `DeclaredItem` can carry `units` and `nativeUnits`; a new native unit `MILLIMETER_PER_MINUTE` converts to `MILLIMETER/SECOND`. Without the switch the model of the device and the SHDR reader are unchanged. Tests validate the probe and the streams against the MTConnect 1.7 schemas.
+
 - **Development tools brought to their current major versions:** Vitest 5, TypeScript 7 and Node.js 22 for the tests and the CI. The typecheck, the 161 tests and the bundle pass.
 
 ## [0.2.1] - The state at a given sequence, one Device per robot, a streaming sample interval and updated dependencies

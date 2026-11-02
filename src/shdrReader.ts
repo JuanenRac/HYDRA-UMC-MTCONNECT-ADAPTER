@@ -14,11 +14,19 @@
 
 import net from "node:net";
 import type { RawReading } from "./dataitem.js";
+import type { NativeUnit } from "./units.js";
 import { SourceUnavailableError, type MachineReader } from "./reader.js";
 
 const MAX_LINE = 1024;
 /** The DataItems of the agent that an SHDR source can feed, by id (the others of the source are ignored). */
-const FEEDABLE: Readonly<Record<string, { category: "EVENT"; type: string }>> = {
+export interface FeedableItem {
+  category: "EVENT" | "SAMPLE" | "CONDITION";
+  type: string;
+  /** SAMPLE only: the unit the source reports the number in. */
+  nativeUnit?: NativeUnit;
+}
+
+const FEEDABLE: Readonly<Record<string, FeedableItem>> = {
   execution: { category: "EVENT", type: "EXECUTION" },
   avail: { category: "EVENT", type: "AVAILABILITY" },
 };
@@ -28,6 +36,8 @@ export interface ShdrMachineReaderOptions {
   port: number;
   /** How long a connection attempt may take. Defaults to 3 s. */
   connectTimeoutMs?: number;
+  /** The DataItems of the stream this reader keeps, by id (the others are ignored). Defaults to the execution and the availability. */
+  feedable?: Readonly<Record<string, FeedableItem>>;
 }
 
 /** "host:port" (a bare port means the local machine), or null when the text is not one. */
@@ -47,6 +57,36 @@ export function parseShdrLine(line: string): [number, string, string] | null {
   const timestampMs = Date.parse(parts[0]);
   if (!Number.isFinite(timestampMs) || !parts[1]) return null;
   return [timestampMs, parts[1], parts[2]];
+}
+
+/** The pieces of a line, split on the pipes that are not escaped (`\|` is a pipe inside a value); an escaped pipe is restored. */
+function splitShdr(line: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === "\\" && line[i + 1] === "|") {
+      current += "|";
+      i++;
+    } else if (ch === "|") {
+      parts.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  parts.push(current);
+  return parts;
+}
+
+/** One SHDR condition line (`time|id|LEVEL|nativeCode|||message`) as [timestampMs, id, level, nativeCode, message], or null for any other line. */
+export function parseShdrCondition(line: string): [number, string, string, string, string] | null {
+  if (line.length > MAX_LINE || line.startsWith("*")) return null;
+  const parts = splitShdr(line);
+  if (parts.length !== 7) return null;
+  const timestampMs = Date.parse(parts[0]);
+  if (!Number.isFinite(timestampMs) || !parts[1] || !parts[2]) return null;
+  return [timestampMs, parts[1], parts[2], parts[3], parts[6]];
 }
 
 export class ShdrMachineReader implements MachineReader {
@@ -118,11 +158,26 @@ export class ShdrMachineReader implements MachineReader {
       socket.write("* PONG 60000\n");
       return;
     }
+    const feedable = this.options.feedable ?? FEEDABLE;
+    const condition = parseShdrCondition(line);
+    if (condition) {
+      const [timestampMs, key, level, nativeCode, message] = condition;
+      const item = feedable[key];
+      if (!item || item.category !== "CONDITION") return;
+      this.latest.set(key, { id: key, category: "CONDITION", type: item.type, value: level, timestampMs, ...(nativeCode ? { nativeCode } : {}), ...(message ? { message } : {}) });
+      return;
+    }
     const parsed = parseShdrLine(line);
     if (!parsed) return;
     const [timestampMs, key, value] = parsed;
-    const item = FEEDABLE[key];
-    if (!item) return;
+    const item = feedable[key];
+    if (!item || item.category === "CONDITION") return;
+    if (item.category === "SAMPLE") {
+      // a number in the unit the source reports in; UNAVAILABLE or text that is not a number is no value
+      const number = value === "" || value === "UNAVAILABLE" ? Number.NaN : Number(value);
+      this.latest.set(key, { id: key, category: "SAMPLE", type: item.type, ...(item.nativeUnit ? { nativeUnit: item.nativeUnit } : {}), value: Number.isFinite(number) ? number : null, timestampMs });
+      return;
+    }
     this.latest.set(key, { id: key, category: item.category, type: item.type, value: value === "" ? null : value, timestampMs });
   }
 }

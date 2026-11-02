@@ -31,6 +31,7 @@ import { markStale, sourceUnavailableReading, toDataItemReading, type DataItemRe
 import { CachedReader, type MachineReader } from "./reader.js";
 import { HydraServerMachineReader } from "./hydraServerReader.js";
 import { parseShdrSource, ShdrMachineReader } from "./shdrReader.js";
+import { CNC_FEEDABLE, CNC_ITEMS } from "./cncItems.js";
 import { ObservationBuffer, type Observation } from "./buffer.js";
 import { element, escapeXml } from "./xml.js";
 import { ShdrServer } from "./shdr.js";
@@ -62,6 +63,10 @@ export interface DeclaredItem {
   id: string;
   category: "EVENT" | "SAMPLE" | "CONDITION";
   type: string;
+  /** SAMPLE only: the MTConnect unit the DataItem is declared in (for example "REVOLUTION/MINUTE"). */
+  units?: string;
+  /** SAMPLE only: the unit the source reports in, when it differs from `units`. */
+  nativeUnits?: string;
 }
 
 const DECLARED_ITEMS: ReadonlyArray<DeclaredItem> = [
@@ -125,7 +130,7 @@ function buildReader(perRobot = false): MachineReader {
   if (!serverUrl && shdrSource) {
     const parsed = parseShdrSource(shdrSource);
     if (!parsed) throw new Error(`HYDRA-UMC-MTCONNECT-ADAPTER: HYDRA_UMC_MTCONNECT_SHDR_SOURCE must be host:port or a port, got ${shdrSource}`);
-    return new ShdrMachineReader(parsed);
+    return new ShdrMachineReader({ ...parsed, ...((process.env.HYDRA_UMC_MTCONNECT_CNC_ITEMS ?? "").trim() === "1" ? { feedable: CNC_FEEDABLE } : {}) });
   }
   if (!serverUrl) return isDemo() ? new FixtureMachineReader() : new UnconfiguredMachineReader();
   const robotIdRaw = process.env.HYDRA_UMC_ROBOT_ID;
@@ -208,6 +213,8 @@ export interface BuildAppOptions {
   bufferSize?: number;
   /** DataItems the device declares in /probe besides the built-in ones, for a reader that reports more (a CONDITION, for example). Each starts UNAVAILABLE. */
   extraItems?: DeclaredItem[];
+  /** Declare the DataItems of a CNC too (see cncItems.ts). Defaults to HYDRA_UMC_MTCONNECT_CNC_ITEMS=1, otherwise off. */
+  cncItems?: boolean;
   /** Answer an MTConnectError with an HTTP error status (400 for INVALID_REQUEST and OUT_OF_RANGE, 404 for NO_DEVICE) instead of 200. Defaults to HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1, otherwise off (200, as before). */
   httpErrors?: boolean;
   /** Serve one Device per robot of the roster (named Robot_<id>) instead of the single HydraNode_1. Needs a reader whose readings carry a `deviceKey` (the HYDRA-UMC-SERVER reader does). Defaults to HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1, otherwise off. */
@@ -231,7 +238,12 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   );
   const maxSampleAgeMs = options.maxSampleAgeMs ?? readIntegerEnv("MAX_SAMPLE_AGE_MS", 0);
   const httpErrors = options.httpErrors ?? (process.env.HYDRA_UMC_MTCONNECT_HTTP_ERRORS ?? "").trim() === "1";
-  const items: DeclaredItem[] = [...DECLARED_ITEMS, ...(options.extraItems ?? [])];
+  // The DataItems of a CNC (emergency stop, door, spindle speed, path feed rate, system condition) that a reader of the SHDR stream
+  // of HYDRA-UMC-BRIDGE-CNC feeds: declared only when asked for (HYDRA_UMC_MTCONNECT_CNC_ITEMS=1 or the option), so the model of the
+  // device is the one it was without it.
+  const cncItems = options.cncItems ?? (process.env.HYDRA_UMC_MTCONNECT_CNC_ITEMS ?? "").trim() === "1";
+  const extraItems: DeclaredItem[] = [...(options.extraItems ?? []), ...(cncItems ? CNC_ITEMS : [])];
+  const items: DeclaredItem[] = [...DECLARED_ITEMS, ...extraItems];
   const maxStreams = readIntegerEnv("MTCONNECT_MAX_STREAMS", 8);
   const minStreamIntervalMs = readIntegerEnv("MTCONNECT_MIN_STREAM_INTERVAL_MS", 100);
   let openStreams = 0;
@@ -397,7 +409,7 @@ ${renderDeviceStreams(observations, scope ? [scope] : listedDevices(), scope ===
   // GET /probe - the static device model: the agent itself and the HydraNode
   // with the DataItems it exposes. (`<Devices>` is `(Agent, Device+)`: the
   // agent is modelled as a device of its own.)
-  const dataItemXml = (item: DeclaredItem): string => `        ${element("DataItem", [["id", item.id], ["category", item.category], ["type", item.type]])}
+  const dataItemXml = (item: DeclaredItem): string => `        ${element("DataItem", [["id", item.id], ["category", item.category], ["type", item.type], ["units", item.units], ["nativeUnits", item.nativeUnits]])}
 `;
   const probeXml = (): string => {
     const agent = `    <Agent id="agent" name="Agent" uuid="hydra-umc-mtconnect-adapter">
@@ -407,7 +419,7 @@ ${renderDeviceStreams(observations, scope ? [scope] : listedDevices(), scope ===
       </DataItems>
     </Agent>
 `;
-    const extras = (options.extraItems ?? []).map((item) => `        ${element("DataItem", [["id", item.id], ["category", item.category], ["type", item.type]])}\n`).join("");
+    const extras = extraItems.map((item) => dataItemXml(item)).join("");
     const robotDevices = [...robots.values()]
       .map(
         (robot) => `    <Device id="${robot.id}" name="${robot.name}" uuid="${robot.uuid}">

@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="Standard">
   <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="Format">
-  <img src="https://img.shields.io/badge/Tests-161%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-169%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**正直な現状確認 - 今日実際に動くもの:** 単位変換(`src/units.ts`)、品質/タイムスタンプ/エラーコードのマッピング(`src/dataitem.ts`)、ポーリング/キャッシュ(`src/reader.ts`)、本物の HYDRA-UMC-SERVER に基づくマシンリーダー(`src/hydraServerReader.ts`)、そして HTTP サーバー(`src/server.ts`)はすべて本物であり、テスト済みである(16 ファイルにわたり 161 件のテストが成功しており、`supertest` を使った本物のリスニングソケットに対する本物の HTTP リクエストも含まれる——単なるコンパイルチェックではない)。既定ではデバイスモデルは 1 台の HydraNode（`hydra_umc_1`）ですが、`HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` を設定すると、HYDRA-UMC-SERVER 自身のライブなロボット一覧からロボットごとに 1 つの Device を生成します（模擬した一覧でテスト済み）。出力される XML は仕様に沿った形状(名前空間、`Device`/`DataItem` の id、共有される `instanceId`)であることが検証済みだが、実際のサードパーティ製 MTConnect Agent やコレクターに対してライブでテストされたことはまだない。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
+**正直な現状確認 - 今日実際に動くもの:** 単位変換(`src/units.ts`)、品質/タイムスタンプ/エラーコードのマッピング(`src/dataitem.ts`)、ポーリング/キャッシュ(`src/reader.ts`)、本物の HYDRA-UMC-SERVER に基づくマシンリーダー(`src/hydraServerReader.ts`)、そして HTTP サーバー(`src/server.ts`)はすべて本物であり、テスト済みである(16 ファイルにわたり 169 件のテストが成功しており、`supertest` を使った本物のリスニングソケットに対する本物の HTTP リクエストも含まれる——単なるコンパイルチェックではない)。既定ではデバイスモデルは 1 台の HydraNode（`hydra_umc_1`）ですが、`HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` を設定すると、HYDRA-UMC-SERVER 自身のライブなロボット一覧からロボットごとに 1 つの Device を生成します（模擬した一覧でテスト済み）。出力される XML は仕様に沿った形状(名前空間、`Device`/`DataItem` の id、共有される `instanceId`)であることが検証済みだが、実際のサードパーティ製 MTConnect Agent やコレクターに対してライブでテストされたことはまだない。これまでに何が実際に出荷されたかは `CHANGELOG.md` を参照。
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | バージョン | `0.2.1` |
 | 成熟度 | 機能する |
-| テスト | 161 (`npm test`) |
+| テスト | 169 (`npm test`) |
 | 技術 | Node.js / Express / MTConnect 1.7 XML |
 | 対象 | HYDRA-UMC セルの Raspberry Pi CM5 |
 | 実機での確認 | 対象外：ここにあるものはハードウェア上では動きません |
@@ -55,7 +55,7 @@ GPL-3.0-or-later - see LICENSE
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
 | ソフトウェア | 🟡 | 主な目的では動作します。足りない点は上の正直さの確認に書かれています |
-| テスト | 🟢 | 自動テスト 161 件。変更のたびに実行されます |
+| テスト | 🟢 | 自動テスト 169 件。変更のたびに実行されます |
 | 実機 | 🟢 | 対象外：ここにあるものはハードウェア上では動きません |
 | インターフェースとプロトコル | 🟡 | 提供するルートやメッセージは文書化され、クライアントで試験済みです。すべてのクライアントがまだ使ったわけではありません |
 | 連携 | 🟡 | メッセージとルートは SDK の共通契約に照らして検証されていますが、実機と一緒に動かしたことはありません |
@@ -90,6 +90,7 @@ GPL-3.0-or-later - see LICENSE
 * 🔌 **CNC ブリッジの SHDR ストリームを読む(任意):** `HYDRA_UMC_MTCONNECT_SHDR_SOURCE=host:port` を設定すると、エージェントは別のアダプターの SHDR 出力から機械の実行状態と可用性を取得します。接続が切れると、最後の値ではなくすべての DataItem を利用不可として示します。読み取り専用です。
 * 🤖 **ロボットごとに 1 つの Device（オプション）：** `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` を設定すると、デバイスモデルが HYDRA-UMC-SERVER のライブなロボット一覧に従い、ロボットごとに Device `Robot_<id>` を独自の `execution` と `avail`、衝突しない id（`robot_<id>_execution`）で宣言します。現れたロボットは宣言され、いなくなったロボットは UNAVAILABLE になり、`/Robot_<id>/current` は 1 台分を返します。既定では無効で、単一の `HydraNode_1` は従来どおりです。*（実装済み、模擬した一覧でテスト済み）*
 * ⏪ **履歴とライブストリーム：** `GET /current?at=<sequence>` は以前のシーケンス時点のデバイスの状態を返し、`GET /sample?interval=<ms>` は接続を開いたままにして、間隔ごとに新しい観測を含む multipart のパートを送ります（空のパートがハートビート）。開いているストリーム数の上限（`MTCONNECT_MAX_STREAMS`）と最小間隔（`MTCONNECT_MIN_STREAM_INTERVAL_MS`）があります。*（実装済み）*
+* 🔌 **CNC の DataItem（任意、既定ではオフ）:** `HYDRA_UMC_MTCONNECT_CNC_ITEMS=1` にすると、デバイスは `estop`（`EMERGENCY_STOP`）、`door`（`DOOR_STATE`）、`spindle_speed`（`SPINDLE_SPEED`、`REVOLUTION/MINUTE`）、`path_feedrate`（`PATH_FEEDRATE`、`MILLIMETER/SECOND`。ブリッジが報告する mm/min から変換）、およびコンディション `system` も宣言し、SHDR ソースのリーダーが `HYDRA-UMC-BRIDGE-CNC` のストリームからそれらを供給します（コンディションはコードとメッセージ付き。ブリッジが知らない値は利用不可のまま）。オフのときのデバイスは従来とまったく同じです。読み取り専用。*(実装済み、MTConnect 1.7 スキーマと模擬ストリームでテスト済み。実際の cppagent や CNC ではまだ未確認)*
 
 ## 🧩 HYDRA-UMC での役割
 
@@ -144,7 +145,7 @@ curl http://127.0.0.1:5000/probe
 
 ## 🧪 テスト
 
-`npm test` で自動テスト 161 件を実行します。 ハードウェアも、このマシンの外にあるものも必要ありません。
+`npm test` で自動テスト 169 件を実行します。 ハードウェアも、このマシンの外にあるものも必要ありません。
 
 CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
 

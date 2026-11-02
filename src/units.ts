@@ -11,7 +11,7 @@
 // it can only be exercised through a real HTTP round trip.
 // =============================================================================
 
-export type NativeUnit = "CELSIUS" | "FAHRENHEIT" | "RPM" | "RADIAN_PER_SECOND" | "MILLIMETER" | "INCH";
+export type NativeUnit = "CELSIUS" | "FAHRENHEIT" | "RPM" | "RADIAN_PER_SECOND" | "MILLIMETER" | "INCH" | "MILLIMETER_PER_MINUTE";
 // Real bug found while adding real XSD schema validation
 // (tests/xsd-validation.test.ts) against the actual MTConnect 1.7 schema's
 // own UnitsType enumeration: neither "DEGREE_CELSIUS" nor
@@ -20,7 +20,7 @@ export type NativeUnit = "CELSIUS" | "FAHRENHEIT" | "RPM" | "RADIAN_PER_SECOND" 
 // DataItem/Sample this adapter ever rendered a temperature or rotational
 // speed unit for was emitting a real schema-invalid `units` attribute
 // until this was caught.
-export type MtconnectUnit = "CELSIUS" | "REVOLUTION/MINUTE" | "MILLIMETER";
+export type MtconnectUnit = "CELSIUS" | "REVOLUTION/MINUTE" | "MILLIMETER" | "MILLIMETER/SECOND";
 
 export class UnitConversionError extends Error {}
 
@@ -46,6 +46,8 @@ export function convertToMtconnectUnit(value: number, nativeUnit: NativeUnit): {
       return { value, unit: "MILLIMETER" };
     case "INCH":
       return { value: value * 25.4, unit: "MILLIMETER" };
+    case "MILLIMETER_PER_MINUTE":
+      return { value: value / 60, unit: "MILLIMETER/SECOND" };
     default: {
       // Exhaustiveness check: a new NativeUnit added without a case here
       // is a real compile error, not a silent runtime fallthrough.
