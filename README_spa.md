@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="Standard">
   <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="Format">
-  <img src="https://img.shields.io/badge/Tests-169%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-180%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**Comprobación de honestidad - qué funciona realmente hoy:** la conversión de unidades (`src/units.ts`), el mapeo de calidad/timestamp/código de error (`src/dataitem.ts`), el sondeo/caché (`src/reader.ts`), el lector de máquina real respaldado por HYDRA-UMC-SERVER (`src/hydraServerReader.ts`), y el servidor HTTP (`src/server.ts`) son todos reales y están testeados (169 tests pasando en 16 archivos, incluyendo peticiones HTTP reales sobre un socket real en escucha vía `supertest` - no solo una comprobación de compilación). Por defecto el modelo de dispositivo es un HydraNode (`hydra_umc_1`); con `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` genera un Device por robot a partir del propio listado en vivo de HYDRA-UMC-SERVER (probado con un listado simulado). El XML emitido se ha verificado con una forma correcta según el spec (namespaces, ids de `Device`/`DataItem`, un `instanceId` compartido) pero todavía no se ha testeado en vivo contra un Agente/colector MTConnect de terceros real. Ver `CHANGELOG.md` para lo que se ha entregado exactamente hasta ahora.
+**Comprobación de honestidad - qué funciona realmente hoy:** la conversión de unidades (`src/units.ts`), el mapeo de calidad/timestamp/código de error (`src/dataitem.ts`), el sondeo/caché (`src/reader.ts`), el lector de máquina real respaldado por HYDRA-UMC-SERVER (`src/hydraServerReader.ts`), y el servidor HTTP (`src/server.ts`) son todos reales y están testeados (180 tests pasando en 16 archivos, incluyendo peticiones HTTP reales sobre un socket real en escucha vía `supertest` - no solo una comprobación de compilación). Por defecto el modelo de dispositivo es un HydraNode (`hydra_umc_1`); con `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` genera un Device por robot a partir del propio listado en vivo de HYDRA-UMC-SERVER (probado con un listado simulado). El XML emitido se ha verificado con una forma correcta según el spec (namespaces, ids de `Device`/`DataItem`, un `instanceId` compartido) pero todavía no se ha testeado en vivo contra un Agente/colector MTConnect de terceros real. Ver `CHANGELOG.md` para lo que se ha entregado exactamente hasta ahora.
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versión | `0.2.1` |
 | Madurez | Funcional |
-| Tests | 169 (`npm test`) |
+| Tests | 180 (`npm test`) |
 | Tecnología | Node.js / Express / MTConnect 1.7 XML |
 | Destino | La Raspberry Pi CM5 de una celda HYDRA-UMC |
 | En hardware real | No aplica: nada de esto se ejecuta en hardware |
@@ -55,7 +55,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Área | Estado | Qué significa aquí |
 |---|---|---|
 | Software | 🟡 | Funciona para su propósito principal; la comprobación de honestidad de arriba lista lo que aún falta |
-| Pruebas | 🟢 | 169 pruebas automáticas, ejecutadas en cada cambio |
+| Pruebas | 🟢 | 180 pruebas automáticas, ejecutadas en cada cambio |
 | Hardware real | 🟢 | No aplica: nada de esto se ejecuta en hardware |
 | Interfaz y protocolos | 🟡 | Las rutas o los mensajes que ofrece están documentados y probados con un cliente; aún no los han usado todos los clientes |
 | Integración | 🟡 | Sus mensajes y rutas se comprueban contra los contratos compartidos del SDK; no ha funcionado junto con el equipo real |
@@ -126,6 +126,8 @@ flowchart LR
 
 El puerto de escucha se lee primero de `HYDRA_UMC_MTCONNECT_PORT` (5000 por defecto). El `PORT` compartido sigue valiendo como último recurso y avisa por consola, de modo que un fichero de entorno compartido por varios servicios no pueda mover el agente al puerto de otro servicio por accidente; un valor definido pero que no es un puerto válido detiene el arranque, y el control de salud del contenedor sigue el mismo orden.
 
+`HYDRA_UMC_MTCONNECT_SHDR_PORT` (7878 es el puerto habitual) sirve las mismas observaciones como SHDR a un agente como cppagent. Dos fuentes más, cada una desactivada hasta que se indique su dirección: `HYDRA_UMC_MTCONNECT_JOBS_URL` (HYDRA-UMC-JOB-DISPATCHER, con `HYDRA_UMC_MTCONNECT_JOBS_TOKEN`) alimenta `PartCount` (los trabajos que terminó) y `Program` (el trabajo que un robot tiene ahora), y `HYDRA_UMC_MTCONNECT_FAULTS_URL` (con `HYDRA_UMC_MTCONNECT_FAULTS_TOKEN`) alimenta dos condiciones, `mcu_condition` y `urtc_condition`, con los fallos activos de los controladores y de los cabezales. Una fuente caída pone en UNAVAILABLE solo sus propios DataItems, y las dos fuentes sirven el dispositivo único `HydraNode_1` (se rechazan junto con un Device por robot). `docs/adapter-manifest.json` describe este adaptador para el hub de conectores.
+
 ## 🚀 Inicio rápido
 
 Requiere Node.js 20 o superior con npm.
@@ -140,7 +142,7 @@ curl http://127.0.0.1:5000/probe
 
 ## 🧪 Pruebas
 
-169 pruebas automáticas se ejecutan con `npm test`. No necesitan hardware ni nada fuera de esta máquina.
+180 pruebas automáticas se ejecutan con `npm test`. No necesitan hardware ni nada fuera de esta máquina.
 
 El CI ejecuta `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que comprueba el manifiesto, los documentos, los ocho README y las imágenes.
 

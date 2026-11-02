@@ -187,3 +187,12 @@ With `HYDRA_UMC_MTCONNECT_SHDR_PORT` set to a port, the adapter also listens for
 - Afterwards: one line per recorded change, the same observations `/current` and `/sample` serve. The source is polled every `POLL_INTERVAL_MS` (at least 100 ms).
 - Line format: `time|dataItemId|value` with an ISO 8601 UTC time; a value that is `UNAVAILABLE` stays `UNAVAILABLE`. A condition is `time|id|LEVEL|nativeCode|||message` (`LEVEL` is NORMAL, WARNING or FAULT) or `time|id|UNAVAILABLE||||`. A pipe in a value is written `\|` and a line break becomes a space.
 - Read only: the single line a client can send is `* PING`, answered with `* PONG <milliseconds>`; every other line is ignored and cannot change a value.
+
+## PartCount, Program and the fault conditions
+
+Both are off until their address is set, and both serve the single device `HydraNode_1`.
+
+- `HYDRA_UMC_MTCONNECT_JOBS_URL` (and `HYDRA_UMC_MTCONNECT_JOBS_TOKEN`): the adapter reads `GET /jobs` of HYDRA-UMC-JOB-DISPATCHER on every read of the source. `part_count` (`PartCount`) is the number of jobs with status `done`; `program` (`Program`) is the id of the newest job with status `assigned`, and UNAVAILABLE when there is none.
+- `HYDRA_UMC_MTCONNECT_FAULTS_URL` (and `HYDRA_UMC_MTCONNECT_FAULTS_TOKEN`): the adapter reads a JSON document `{"faults": [{"robot_id", "component", "error_code", "detail", "at_utc", "severity", "active"}]}`. `severity` (`fault` or `warning`) and `active` (`false` to skip an entry) are optional; without `severity` the codes `ESTOP_ACTIVE`, `OUT_OF_RANGE`, `TOOL_INCOMPATIBLE` and `GRIP_LOST_SEAL` are Fault and every other code Warning. A component whose name contains `urtc` feeds the condition `urtc_condition`, every other one `mcu_condition`. No service of the ecosystem publishes this document yet; the adapter consumes it from whatever produces it.
+
+A source that answers with an error or cannot be reached turns only its own DataItems UNAVAILABLE; the rest of the device is served as before. With `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` the adapter refuses to start with either address set.

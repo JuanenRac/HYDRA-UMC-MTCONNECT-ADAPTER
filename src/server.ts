@@ -35,6 +35,7 @@ import { CNC_FEEDABLE, CNC_ITEMS } from "./cncItems.js";
 import { ObservationBuffer, type Observation } from "./buffer.js";
 import { element, escapeXml } from "./xml.js";
 import { ShdrServer } from "./shdr.js";
+import { EnrichedReader, enrichersFromEnv, type Enricher } from "./enrichers.js";
 import { resolveListenPort, type ResolvedPort } from "./portConfig.js";
 
 /** A non-negative integer from an environment variable; a value that is set but not one is a startup error, never a silent default. */
@@ -213,6 +214,8 @@ export interface BuildAppOptions {
   bufferSize?: number;
   /** DataItems the device declares in /probe besides the built-in ones, for a reader that reports more (a CONDITION, for example). Each starts UNAVAILABLE. */
   extraItems?: DeclaredItem[];
+  /** Extra sources for the one device (the job queue, the active faults), see enrichers.ts. Defaults to the ones the environment names (none unless an address is set). */
+  enrichers?: Enricher[];
   /** Declare the DataItems of a CNC too (see cncItems.ts). Defaults to HYDRA_UMC_MTCONNECT_CNC_ITEMS=1, otherwise off. */
   cncItems?: boolean;
   /** Answer an MTConnectError with an HTTP error status (400 for INVALID_REQUEST and OUT_OF_RANGE, 404 for NO_DEVICE) instead of 200. Defaults to HYDRA_UMC_MTCONNECT_HTTP_ERRORS=1, otherwise off (200, as before). */
@@ -232,8 +235,13 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   app.disable("x-powered-by");
   const demo = options.reader === undefined && isDemo();
   const devicePerRobot = options.devicePerRobot ?? (process.env.HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT ?? "").trim() === "1";
+  const enrichers = options.enrichers ?? enrichersFromEnv();
+  if (enrichers.length > 0 && devicePerRobot) {
+    throw new Error("HYDRA-UMC-MTCONNECT-ADAPTER: the job queue and the fault feed serve the single device HydraNode_1; switch off HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT or the feeds");
+  }
+  const baseReader = options.reader ?? buildReader(devicePerRobot);
   const cachedReader = new CachedReader(
-    options.reader ?? buildReader(devicePerRobot),
+    enrichers.length > 0 ? new EnrichedReader(baseReader, enrichers) : baseReader,
     options.minPollIntervalMs ?? readIntegerEnv("POLL_INTERVAL_MS", 1000),
   );
   const maxSampleAgeMs = options.maxSampleAgeMs ?? readIntegerEnv("MAX_SAMPLE_AGE_MS", 0);
@@ -242,7 +250,7 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // of HYDRA-UMC-BRIDGE-CNC feeds: declared only when asked for (HYDRA_UMC_MTCONNECT_CNC_ITEMS=1 or the option), so the model of the
   // device is the one it was without it.
   const cncItems = options.cncItems ?? (process.env.HYDRA_UMC_MTCONNECT_CNC_ITEMS ?? "").trim() === "1";
-  const extraItems: DeclaredItem[] = [...(options.extraItems ?? []), ...(cncItems ? CNC_ITEMS : [])];
+  const extraItems: DeclaredItem[] = [...(options.extraItems ?? []), ...(cncItems ? CNC_ITEMS : []), ...enrichers.flatMap((enricher) => enricher.items)];
   const items: DeclaredItem[] = [...DECLARED_ITEMS, ...extraItems];
   const maxStreams = readIntegerEnv("MTCONNECT_MAX_STREAMS", 8);
   const minStreamIntervalMs = readIntegerEnv("MTCONNECT_MIN_STREAM_INTERVAL_MS", 100);

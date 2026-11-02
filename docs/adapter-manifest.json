@@ -1,0 +1,42 @@
+{
+  "adapterId": "hydra-umc-mtconnect-adapter",
+  "schemaVersion": "1.0",
+  "protocol": "mtconnect",
+  "targetKinds": ["mtconnect-agent", "historian"],
+  "endpointSchema": {
+    "type": "object",
+    "properties": {
+      "host": { "type": "string" },
+      "port": { "type": "integer" },
+      "shdrPort": { "type": "integer" }
+    },
+    "required": ["host", "port"]
+  },
+  "authenticationRef": "none:mtconnect-adapter",
+  "capabilities": [
+    {
+      "name": "readCurrent",
+      "mode": "read",
+      "risk": "low"
+    },
+    {
+      "name": "readSample",
+      "mode": "read",
+      "risk": "low"
+    }
+  ],
+  "requiredSafetyGates": [],
+  "healthCheck": { "type": "http-get", "path": "/probe" },
+  "timeoutMs": 4000,
+  "idempotency": "idempotent",
+  "evidenceSchema": {
+    "type": "object",
+    "properties": {
+      "dataItemId": { "type": "string" },
+      "value": {},
+      "sequence": { "type": "integer" }
+    }
+  },
+  "sdkCompatibility": ">=0.1.0",
+  "ownerProject": "HYDRA-UMC-MTCONNECT-ADAPTER"
+}
