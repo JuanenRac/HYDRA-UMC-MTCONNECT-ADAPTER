@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.2.2] - Part count and program name from the job dispatcher, conditions from a fault feed and a manifest for the hub
+
 - **PartCount and Program from the job queue (off until an address is set).** `HYDRA_UMC_MTCONNECT_JOBS_URL` (HYDRA-UMC-JOB-DISPATCHER, `HYDRA_UMC_MTCONNECT_JOBS_TOKEN`) declares `part_count` (`PART_COUNT`, the number of jobs the queue finished) and `program` (`PROGRAM`, the id of the job a robot is working on now, UNAVAILABLE when none is), useful for the OEE of the production reports.
 - **Conditions from the faults of the controllers and the tool heads (off until an address is set).** `HYDRA_UMC_MTCONNECT_FAULTS_URL` (`HYDRA_UMC_MTCONNECT_FAULTS_TOKEN`) declares two conditions of type `SYSTEM`, `mcu_condition` and `urtc_condition`: Normal with no active fault, Warning or Fault by the error code of the worst active fault (the newest among equals) with the native code and a message that names the component, Unavailable while the feed cannot be read. A feed that is down turns only its own DataItems UNAVAILABLE. Both sources serve the single device HydraNode_1 and are refused together with one Device per robot. The feed format is in `docs/API.md`.
 - **`docs/adapter-manifest.json` describes this adapter for the connector hub.** The SHDR output on TCP (`HYDRA_UMC_MTCONNECT_SHDR_PORT=7878` is the usual port of an agent such as cppagent) carries the new DataItems like the others.
