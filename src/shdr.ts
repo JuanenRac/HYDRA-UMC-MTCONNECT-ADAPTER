@@ -26,7 +26,7 @@ const MAX_INPUT_LINE = 1024;
 
 /** SHDR is line and pipe separated: a pipe in a value is escaped, a line break becomes a space. */
 export function escapeShdr(text: string): string {
-  return text.replace(/\r\n|\r|\n/g, " ").replace(/\|/g, "\\|");
+  return text.replace(/\r\n|\r|\n/g, " ").replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 }
 
 /** One observation as one SHDR line (no line terminator). */

@@ -34,6 +34,9 @@ describe("SHDR formatting", () => {
   it("escapes pipes and line breaks", () => {
     expect(escapeShdr("a|b\nc")).toBe("a\\|b c");
   });
+  it("escapes a backslash so that it cannot hide the pipe that follows", () => {
+    expect(escapeShdr("a\\|b")).toBe("a\\\\\\|b");
+  });
   it("writes a condition with its native code and message", () => {
     const line = formatShdrLine({ sequence: 1, id: "cond", category: "CONDITION", type: "TEMPERATURE", value: "FAULT", timestampMs: T, nativeCode: "E12", message: "too hot" });
     expect(line).toBe("2026-01-01T00:00:00.000Z|cond|FAULT|E12|||too hot");
