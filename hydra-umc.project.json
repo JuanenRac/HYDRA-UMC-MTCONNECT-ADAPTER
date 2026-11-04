@@ -25,5 +25,8 @@
   "service": {
     "port": 5000,
     "health_path": "/probe"
-  }
+  },
+  "depends_on": [
+    "HYDRA-UMC-GATEWAY-INDUSTRIAL"
+  ]
 }
