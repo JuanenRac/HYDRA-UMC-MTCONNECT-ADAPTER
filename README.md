@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="Standard">
   <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="Format">
-  <img src="https://img.shields.io/badge/Tests-180%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-184%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.2-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**Honesty check - what actually runs today:** unit conversion (`src/units.ts`), quality/timestamp/error-code mapping (`src/dataitem.ts`), polling/caching (`src/reader.ts`), the real HYDRA-UMC-SERVER-backed machine reader (`src/hydraServerReader.ts`), and the HTTP server (`src/server.ts`) are all real and tested (180 tests passing across 16 files, including real HTTP requests over a real listening socket via `supertest` - not just a compile check). By default the device model is one HydraNode (`hydra_umc_1`); with `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` it generates one Device per robot from HYDRA-UMC-SERVER's own live roster (tested against a simulated roster). The emitted XML has been verified for spec-correct shape (namespaces, `Device`/`DataItem` ids, a shared `instanceId`) but has not yet been tested live against a real third-party MTConnect Agent or collector. See `CHANGELOG.md` for exactly what has shipped so far.
+**Honesty check - what actually runs today:** unit conversion (`src/units.ts`), quality/timestamp/error-code mapping (`src/dataitem.ts`), polling/caching (`src/reader.ts`), the real HYDRA-UMC-SERVER-backed machine reader (`src/hydraServerReader.ts`), and the HTTP server (`src/server.ts`) are all real and tested (184 tests passing across 16 files, including real HTTP requests over a real listening socket via `supertest` - not just a compile check). By default the device model is one HydraNode (`hydra_umc_1`); with `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` it generates one Device per robot from HYDRA-UMC-SERVER's own live roster (tested against a simulated roster). The emitted XML has been verified for spec-correct shape (namespaces, `Device`/`DataItem` ids, a shared `instanceId`) but has not yet been tested live against a real third-party MTConnect Agent or collector. See `CHANGELOG.md` for exactly what has shipped so far.
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.2.2` |
 | Maturity | Functional |
-| Tests | 180 (`npm test`) |
+| Tests | 184 (`npm test`) |
 | Stack | Node.js / Express / MTConnect 1.7 XML |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
 | On real hardware | Not applicable: nothing here runs on hardware |
@@ -55,7 +55,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Software | 🟡 | Works for its main purpose; the honesty check above lists what is still missing |
-| Tests | 🟢 | 180 automated tests, run on every change |
+| Tests | 🟢 | 184 automated tests, run on every change |
 | Real hardware | 🟢 | Not applicable: nothing here runs on hardware |
 | Interface and protocols | 🟡 | The routes or messages it offers are documented and tested with a client; not every client has used them yet |
 | Integration | 🟡 | Its messages and routes are checked against the shared contracts of the SDK; it has not run together with the real equipment |
@@ -142,7 +142,7 @@ curl http://127.0.0.1:5000/probe
 
 ## 🧪 Testing
 
-180 automated tests run with `npm test`. They need no hardware and nothing outside this machine.
+184 automated tests run with `npm test`. They need no hardware and nothing outside this machine.
 
 The CI runs `HYDRA_UMC_CI=1 python tools/ci_validate.py`, which checks the manifest, the documents, the eight READMEs and the pictures.
 

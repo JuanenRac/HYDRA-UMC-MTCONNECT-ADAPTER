@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Standard-MTConnect-blue.svg" alt="Standard">
   <img src="https://img.shields.io/badge/Format-XML%20%2F%20HTTP-orange.svg" alt="Format">
-  <img src="https://img.shields.io/badge/Tests-180%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-184%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.2-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-**诚实核查 - 今天真正能运行的部分：** 单位换算(`src/units.ts`)、质量/时间戳/错误码映射(`src/dataitem.ts`)、轮询/缓存(`src/reader.ts`)、由真实 HYDRA-UMC-SERVER 支持的机器读取器(`src/hydraServerReader.ts`)，以及 HTTP 服务器(`src/server.ts`)都是真实的并经过测试(16 个文件共 180 个测试通过，其中包括通过 `supertest` 对一个真实监听套接字发出的真实 HTTP 请求——而不仅仅是编译检查)。默认情况下设备模型是一个 HydraNode（`hydra_umc_1`）；设置 `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` 后，会根据 HYDRA-UMC-SERVER 自身的实时机器人列表为每台机器人生成一个 Device（已用模拟列表测试）。所输出的 XML 已经过验证，结构符合规范(命名空间、`Device`/`DataItem` id、共享的 `instanceId`),但尚未针对真实的第三方 MTConnect Agent 或采集器进行过实际联调测试。具体已交付的内容请见 `CHANGELOG.md`。
+**诚实核查 - 今天真正能运行的部分：** 单位换算(`src/units.ts`)、质量/时间戳/错误码映射(`src/dataitem.ts`)、轮询/缓存(`src/reader.ts`)、由真实 HYDRA-UMC-SERVER 支持的机器读取器(`src/hydraServerReader.ts`)，以及 HTTP 服务器(`src/server.ts`)都是真实的并经过测试(16 个文件共 184 个测试通过，其中包括通过 `supertest` 对一个真实监听套接字发出的真实 HTTP 请求——而不仅仅是编译检查)。默认情况下设备模型是一个 HydraNode（`hydra_umc_1`）；设置 `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` 后，会根据 HYDRA-UMC-SERVER 自身的实时机器人列表为每台机器人生成一个 Device（已用模拟列表测试）。所输出的 XML 已经过验证，结构符合规范(命名空间、`Device`/`DataItem` id、共享的 `instanceId`),但尚未针对真实的第三方 MTConnect Agent 或采集器进行过实际联调测试。具体已交付的内容请见 `CHANGELOG.md`。
 
 ---
 
@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | 版本 | `0.2.2` |
 | 成熟度 | 可用 |
-| 测试 | 180 (`npm test`) |
+| 测试 | 184 (`npm test`) |
 | 技术栈 | Node.js / Express / MTConnect 1.7 XML |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 不适用：这里的内容不在硬件上运行 |
@@ -55,7 +55,7 @@ GPL-3.0-or-later - see LICENSE
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟢 | 180 项自动测试，每次变更都会运行 |
+| 测试 | 🟢 | 184 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🟢 | 不适用：这里的内容不在硬件上运行 |
 | 接口与协议 | 🟡 | 提供的路由或消息已有文档，并用客户端测试过；尚未被所有客户端使用 |
 | 集成 | 🟡 | 其消息和路由已对照 SDK 的共享契约检查；尚未与真实设备一起运行 |
@@ -146,7 +146,7 @@ curl http://127.0.0.1:5000/probe
 
 ## 🧪 测试
 
-运行 `npm test` 会执行 180 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
+运行 `npm test` 会执行 184 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
 
 CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
 
