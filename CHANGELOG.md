@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The build test of the repository compiles only on CI or when allowed:** for the stacks that compile (`rust`, `go`, `android`, `flutter`, `firmware-c`), `tools/build_test.py` prints `BUILD_TEST=SKIPPED` with exit status 2 on a plain PC, never a pass; `ALLOW_LOCAL_BUILD=1` allows it and a CI runner always may. The `python` and `node` stacks are not locked.
+
 ## [0.2.2] - Part count and program name from the job dispatcher, conditions from a fault feed and a manifest for the hub
 
 - **PartCount and Program from the job queue (off until an address is set).** `HYDRA_UMC_MTCONNECT_JOBS_URL` (HYDRA-UMC-JOB-DISPATCHER, `HYDRA_UMC_MTCONNECT_JOBS_TOKEN`) declares `part_count` (`PART_COUNT`, the number of jobs the queue finished) and `program` (`PROGRAM`, the id of the job a robot is working on now, UNAVAILABLE when none is), useful for the OEE of the production reports.
