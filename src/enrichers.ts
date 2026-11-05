@@ -20,7 +20,7 @@
 import type { RawReading } from "./dataitem.js";
 import type { DeclaredItem } from "./server.js";
 import type { MachineReader } from "./reader.js";
-import { readJsonCapped } from "./hydraServerReader.js";
+import { HydraServerMachineReader, readJsonCapped } from "./hydraServerReader.js";
 
 export interface Enricher {
   /** The DataItems this source feeds. */
@@ -130,6 +130,39 @@ export function faultsEnricher(url: string, token?: string, doFetch: typeof fetc
   return { items: FAULT_ITEMS, read: async () => faultReadings(await getJson(url, token, doFetch), Date.now()) };
 }
 
+/** What a client of HYDRA-UMC-SERVER offers the fault feed: an authenticated GET answered as JSON. */
+export interface ServerJsonClient {
+  getJson(path: string): Promise<unknown>;
+}
+
+/**
+ * The faults the SERVER keeps (GET /api/faults?active=1, `fault-event/1` records it reads from the broker) in the shape the condition code
+ * above reads. `info` is not a fault and is left out; `warning` is a Warning; `error` and `critical` are a Fault. The source of the event
+ * is the component, so a tool-head (URTC) source feeds `urtc_condition`.
+ */
+export function serverFaultsAsFeed(body: unknown): { faults: unknown[] } {
+  const list = (body as { active?: unknown } | null)?.active;
+  if (!Array.isArray(list)) throw new Error("the answer of the server has no list of active faults");
+  const faults: unknown[] = [];
+  for (const entry of list) {
+    const f = entry as { source?: unknown; code?: unknown; text?: unknown; severity?: unknown; since?: unknown } | null;
+    if (typeof f?.code !== "string" || f.code === "" || f.severity === "info") continue;
+    faults.push({
+      component: typeof f.source === "string" ? f.source : "unknown",
+      error_code: f.code,
+      detail: typeof f.text === "string" ? f.text : "",
+      at_utc: typeof f.since === "number" && Number.isFinite(f.since) ? new Date(f.since).toISOString() : undefined,
+      severity: f.severity === "warning" ? "warning" : "fault",
+    });
+  }
+  return { faults };
+}
+
+/** The same two conditions as the fault feed, from HYDRA-UMC-SERVER's own GET /api/faults (the signed-in identity of the adapter). */
+export function serverFaultsEnricher(client: ServerJsonClient): Enricher {
+  return { items: FAULT_ITEMS, read: async () => faultReadings(serverFaultsAsFeed(await client.getJson("/api/faults?active=1")), Date.now()) };
+}
+
 /** The enrichers the environment asks for: none unless an address is set. */
 export function enrichersFromEnv(env: NodeJS.ProcessEnv = process.env): Enricher[] {
   const out: Enricher[] = [];
@@ -146,6 +179,22 @@ export function enrichersFromEnv(env: NodeJS.ProcessEnv = process.env): Enricher
   if (jobs) out.push(jobsEnricher(check("HYDRA_UMC_MTCONNECT_JOBS_URL", jobs), env.HYDRA_UMC_MTCONNECT_JOBS_TOKEN?.trim() || undefined));
   const faults = env.HYDRA_UMC_MTCONNECT_FAULTS_URL?.trim();
   if (faults) out.push(faultsEnricher(check("HYDRA_UMC_MTCONNECT_FAULTS_URL", faults), env.HYDRA_UMC_MTCONNECT_FAULTS_TOKEN?.trim() || undefined));
+  // The faults the SERVER keeps, with the identity the adapter already uses to read the roster. Off unless HYDRA_UMC_MTCONNECT_SERVER_FAULTS=1.
+  if ((env.HYDRA_UMC_MTCONNECT_SERVER_FAULTS ?? "").trim() === "1") {
+    const url = env.HYDRA_UMC_SERVER_URL?.trim();
+    if (!url) throw new Error("HYDRA-UMC-MTCONNECT-ADAPTER: HYDRA_UMC_MTCONNECT_SERVER_FAULTS=1 needs HYDRA_UMC_SERVER_URL");
+    if (faults) throw new Error("HYDRA-UMC-MTCONNECT-ADAPTER: HYDRA_UMC_MTCONNECT_SERVER_FAULTS and HYDRA_UMC_MTCONNECT_FAULTS_URL feed the same conditions: set only one");
+    out.push(
+      serverFaultsEnricher(
+        new HydraServerMachineReader({
+          baseUrl: check("HYDRA_UMC_SERVER_URL", url),
+          token: env.HYDRA_UMC_SERVER_TOKEN,
+          username: env.HYDRA_UMC_SERVER_USER,
+          password: env.HYDRA_UMC_SERVER_PASSWORD,
+        }),
+      ),
+    );
+  }
   return out;
 }
 

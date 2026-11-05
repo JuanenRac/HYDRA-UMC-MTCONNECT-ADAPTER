@@ -14,8 +14,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { validateXML } from "xmllint-wasm";
 import { buildApp } from "../src/server.js";
-import { EnrichedReader, enrichersFromEnv, faultLevel, faultReadings, faultsEnricher, jobReadings, jobsEnricher } from "../src/enrichers.js";
+import { EnrichedReader, enrichersFromEnv, faultLevel, faultReadings, faultsEnricher, jobReadings, jobsEnricher, serverFaultsAsFeed, serverFaultsEnricher } from "../src/enrichers.js";
 import type { MachineReader } from "../src/reader.js";
+import { HydraServerMachineReader } from "../src/hydraServerReader.js";
 
 const SCHEMA_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../schemas/mtconnect-1.7");
 const schema = (fileName: string) => ({ fileName, contents: readFileSync(path.join(SCHEMA_DIR, fileName), "utf-8") });
@@ -186,5 +187,45 @@ describe("the switches", () => {
     const app = buildApp({ reader: down, minPollIntervalMs: 0, enrichers: [jobsEnricher(url)] });
     const current = await request(app).get("/current");
     expect(current.text).toMatch(/<PartCount dataItemId="part_count"[^>]*>UNAVAILABLE<\/PartCount>/);
+  });
+});
+
+describe("the faults that HYDRA-UMC-SERVER keeps (GET /api/faults)", () => {
+  const ACTIVE = {
+    active: [
+      { schema: "fault-event/1", source: "mcu", robotId: "1", code: "ESTOP_ACTIVE", severity: "critical", text: "stop", state: "raised", since: 1000 },
+      { schema: "fault-event/1", source: "urtc-head", robotId: "1", code: "TEMP_HIGH", severity: "warning", text: "hot", state: "raised", since: 2000 },
+      { schema: "fault-event/1", source: "mcu", robotId: null, code: "NOTE", severity: "info", text: "fyi", state: "raised", since: 3000 },
+    ],
+  };
+
+  it("maps the severity to a level, leaves out what is only information and sends a tool-head source to its own condition", () => {
+    const feed = serverFaultsAsFeed(ACTIVE);
+    expect(feed.faults).toHaveLength(2);
+    const readings = faultReadings(feed, 5);
+    expect(readings.find((r) => r.id === "mcu_condition")).toMatchObject({ value: "fault", nativeCode: "ESTOP_ACTIVE" });
+    expect(readings.find((r) => r.id === "urtc_condition")).toMatchObject({ value: "warning", nativeCode: "TEMP_HIGH" });
+    expect(faultReadings(serverFaultsAsFeed({ active: [] }), 5).map((r) => r.value)).toEqual(["normal", "normal"]);
+    expect(() => serverFaultsAsFeed({})).toThrow(/no list of active faults/);
+  });
+
+  it("reads the route with the identity of the adapter and turns the conditions UNAVAILABLE when the server refuses", async () => {
+    const { url, state } = await service({ body: ACTIVE });
+    const enricher = serverFaultsEnricher(new HydraServerMachineReader({ baseUrl: url, token: "tok" }));
+    const readings = await enricher.read();
+    expect(state.paths).toEqual(["/api/faults?active=1"]);
+    expect(state.authorization).toBe("Bearer tok");
+    expect(readings.find((r) => r.id === "mcu_condition")?.value).toBe("fault");
+    state.status = 401;
+    const app = buildApp({ reader: baseReader, minPollIntervalMs: 0, enrichers: [enricher] });
+    const current = await request(app).get("/current");
+    expect(current.text).toContain("Unavailable");
+  });
+
+  it("is off unless the switch is 1, and needs the address of the server", () => {
+    expect(enrichersFromEnv({ HYDRA_UMC_SERVER_URL: "http://127.0.0.1:3000" })).toHaveLength(0);
+    expect(enrichersFromEnv({ HYDRA_UMC_MTCONNECT_SERVER_FAULTS: "1", HYDRA_UMC_SERVER_URL: "http://127.0.0.1:3000", HYDRA_UMC_SERVER_TOKEN: "t" })).toHaveLength(1);
+    expect(() => enrichersFromEnv({ HYDRA_UMC_MTCONNECT_SERVER_FAULTS: "1" })).toThrow(/needs HYDRA_UMC_SERVER_URL/);
+    expect(() => enrichersFromEnv({ HYDRA_UMC_MTCONNECT_SERVER_FAULTS: "1", HYDRA_UMC_SERVER_URL: "http://x.example", HYDRA_UMC_MTCONNECT_FAULTS_URL: "http://y.example/f" })).toThrow(/set only one/);
   });
 });

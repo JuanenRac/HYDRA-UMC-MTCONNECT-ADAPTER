@@ -175,11 +175,29 @@ export class HydraServerMachineReader implements MachineReader {
   }
 
   /** GET /api/settings with the credential, logging in first or again when allowed. */
-  private async fetchSettings(): Promise<Response> {
+  private fetchSettings(): Promise<Response> {
+    return this.authedGet("/api/settings");
+  }
+
+  /** GET `path` of the server with the credential (a token, or the session of an account logged in first or again), answered as JSON; a refusal or any other status is an error. */
+  async getJson(path: string): Promise<unknown> {
+    const response = await this.authedGet(path);
+    if (response.status === 401 || response.status === 403) {
+      await response.arrayBuffer().catch(() => undefined);
+      throw new SessionRefusedError(`HYDRA-UMC-SERVER refused the credential (HTTP ${response.status}) for ${path}`);
+    }
+    if (!response.ok) {
+      await response.arrayBuffer().catch(() => undefined);
+      throw new Error(`HYDRA-UMC-SERVER replied with HTTP ${response.status} for ${path}`);
+    }
+    return readJsonCapped(response);
+  }
+
+  private async authedGet(path: string): Promise<Response> {
     const hasAccount = this.username !== undefined && this.password !== undefined;
     if (this.token === undefined && hasAccount) await this.login();
     const get = () =>
-      this.fetchWithTimeout(`${this.baseUrl}/api/settings`, {
+      this.fetchWithTimeout(`${this.baseUrl}${path}`, {
         headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
       });
     let response = await get();

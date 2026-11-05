@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The conditions can come from the faults HYDRA-UMC-SERVER keeps (off by default):** `HYDRA_UMC_MTCONNECT_SERVER_FAULTS=1` reads `GET /api/faults?active=1` with the identity the adapter already uses for the roster and feeds `mcu_condition` and `urtc_condition` from the `fault-event/1` records (severity `warning` is a Warning, `error` and `critical` a Fault, `info` is left out). A server that refuses turns only the two conditions UNAVAILABLE. Tests answer on a real socket.
+
 - **The build test of the repository compiles only on CI or when allowed:** for the stacks that compile (`rust`, `go`, `android`, `flutter`, `firmware-c`), `tools/build_test.py` prints `BUILD_TEST=SKIPPED` with exit status 2 on a plain PC, never a pass; `ALLOW_LOCAL_BUILD=1` allows it and a CI runner always may. The `python` and `node` stacks are not locked.
 
 ## [0.2.2] - Part count and program name from the job dispatcher, conditions from a fault feed and a manifest for the hub
