@@ -1,0 +1,73 @@
+# =============================================================================
+# HYDRA-UMC MTCONNECT ADAPTER - cppagent against the SHDR output
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+#
+# Starts the adapter with its demonstration data, starts a real cppagent in a container that reads the SHDR output, and checks that the agent
+# serves the same DataItems and values (tools/cppagent_check.py). Manual: it pulls an image from Docker Hub.
+# =============================================================================
+name: cppagent
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [tmp-cppagent]
+
+permissions:
+  contents: read
+
+jobs:
+  cppagent:
+    name: A real cppagent reads the SHDR output
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install the dependencies
+        run: npm ci --ignore-scripts
+      - name: Start the adapter with its demonstration data
+        env:
+          HYDRA_UMC_MTCONNECT_DEMO: "1"
+          HYDRA_UMC_MTCONNECT_SHDR_PORT: "7878"
+          HYDRA_UMC_MTCONNECT_SHDR_HOST: "127.0.0.1"
+          PORT: "7700"
+        run: |
+          nohup npx tsx src/server.ts > adapter.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:7700/probe -o devices.xml && break; sleep 1; done
+          head -c 400 devices.xml; echo
+      - name: Start a real cppagent that reads the SHDR output
+        run: |
+          mkdir -p agentcfg
+          cp devices.xml agentcfg/devices.xml
+          cat > agentcfg/agent.cfg <<'CFG'
+          Devices = /mtconnect/config/devices.xml
+          Port = 5000
+          ServiceName = HydraAgent
+          Adapters {
+            HydraNode_1 {
+              Host = 127.0.0.1
+              Port = 7878
+            }
+          }
+          CFG
+          docker run -d --name cppagent --network host -v "$PWD/agentcfg:/mtconnect/config" mtconnect/agent run /mtconnect/config/agent.cfg
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:5000/probe -o /dev/null && break; sleep 1; done
+          docker logs cppagent | tail -20
+      - name: Compare what the agent serves with what the adapter serves
+        run: python tools/cppagent_check.py http://127.0.0.1:7700 http://127.0.0.1:5000 --wait 30
+      - name: Logs on failure
+        if: failure()
+        run: |
+          docker logs cppagent | tail -60 || true
+          tail -40 adapter.log || true
