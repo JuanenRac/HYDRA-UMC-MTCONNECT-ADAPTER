@@ -10,8 +10,6 @@ name: cppagent
 
 on:
   workflow_dispatch:
-  push:
-    branches: [tmp-cppagent]
 
 permissions:
   contents: read

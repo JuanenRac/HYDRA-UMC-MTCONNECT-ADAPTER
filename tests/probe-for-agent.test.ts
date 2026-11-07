@@ -17,6 +17,9 @@ import { buildApp } from "../src/server.js";
 const SCHEMA_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../schemas/mtconnect-1.7");
 const schema = (fileName: string) => ({ fileName, contents: readFileSync(path.join(SCHEMA_DIR, fileName), "utf-8") });
 
+// the header carries the time of the answer
+const withoutTime = (xml: string): string => xml.replace(/creationTime="[^"]*"/, "").replace(/instanceId="\d+"/, "");
+
 describe("GET /probe?shdr=1", () => {
   it("keeps nativeUnits in the normal model and leaves it out for an agent", async () => {
     const app = buildApp();
@@ -32,7 +35,7 @@ describe("GET /probe?shdr=1", () => {
     const app = buildApp();
     const normal = (await request(app).get("/probe")).text;
     const forAgent = (await request(app).get("/probe?shdr=1")).text;
-    expect(forAgent).toBe(normal.replace(/ nativeUnits="[^"]*"/g, ""));
+    expect(withoutTime(forAgent)).toBe(withoutTime(normal.replace(/ nativeUnits="[^"]*"/g, "")));
   });
 
   it("only the exact value 1 changes the model", async () => {
@@ -41,7 +44,7 @@ describe("GET /probe?shdr=1", () => {
     for (const value of ["0", "true", "yes", "", "11"]) {
       const answer = await request(app).get(`/probe?shdr=${value}`);
       expect(answer.status).toBe(200);
-      expect(answer.text.replace(/instanceId="\d+"/, "").replace(/creationTime="[^"]*"/, "")).toBe(normal.replace(/instanceId="\d+"/, "").replace(/creationTime="[^"]*"/, ""));
+      expect(withoutTime(answer.text)).toBe(withoutTime(normal));
     }
   });
 

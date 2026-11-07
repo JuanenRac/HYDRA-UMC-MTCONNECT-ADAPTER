@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A real cppagent against the SHDR output, and the bug it found:** the manual workflow "cppagent" starts the adapter with its demonstration data and a real cppagent in a container that reads the SHDR output, and `tools/cppagent_check.py` compares what the agent serves with what the adapter serves (the DataItems declared and every value). The first run showed that an agent given the model of `GET /probe` converted the temperature a second time (the SHDR value was already Celsius while the model said `nativeUnits="FAHRENHEIT"`). `GET /probe?shdr=1` now serves the model without `nativeUnits` for an agent that reads SHDR (5 more tests, schema-valid), and the check passes with it. Tried with demonstration data only, not with a machine.
 - **Dependencies updated:** the npm dependencies move to their latest compatible releases (express 5.3, supertest 7.3, tsx 4.23 and the Node and supertest type definitions).
 
 ## [0.2.3] - The conditions can come from the faults HYDRA-UMC-SERVER keeps (off by default): HYDRAUMCMTCONNECTSERVERFAULTS=1 reads GET /api/faults?active=1 with the identity the adapter already uses for the roster and feeds mcucondition... (and 1 more changes)

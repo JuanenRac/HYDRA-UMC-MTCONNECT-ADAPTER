@@ -18,6 +18,8 @@ All endpoints share one `Header` block (`creationTime`, `instanceId`, `bufferSiz
 
 ## `GET /probe`
 
+`GET /probe?shdr=1` (only the exact value `1`) returns the same model without the `nativeUnits` attributes. It is the model to give an agent such as cppagent that reads the SHDR output: the SHDR values are already in the declared units, and an agent that found `nativeUnits="FAHRENHEIT"` would convert a Celsius value a second time. The same query works on `GET /<device>/probe`.
+
 The static device model: the agent itself (the schema models it as a device of its own, with an `agent_avail` DataItem) and the HydraNodes with the `DataItem`s each one exposes. **By default exactly one HydraNode** (`hydra_umc_1`). With `HYDRA_UMC_MTCONNECT_DEVICE_PER_ROBOT=1` (and `HYDRA_UMC_SERVER_URL`) it generates one device per robot of HYDRA-UMC-SERVER's roster instead, see "One device per robot" below.
 
 **Response** - `200`, `Content-Type: application/xml`:
