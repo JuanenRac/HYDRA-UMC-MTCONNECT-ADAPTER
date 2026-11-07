@@ -44,7 +44,7 @@ jobs:
           PORT: "7700"
         run: |
           nohup npx tsx src/server.ts > adapter.log 2>&1 &
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:7700/probe -o devices.xml && break; sleep 1; done
+          for i in $(seq 1 30); do curl -fsS "http://127.0.0.1:7700/probe?shdr=1" -o devices.xml && break; sleep 1; done
           head -c 400 devices.xml; echo
       - name: Start a real cppagent that reads the SHDR output
         run: |

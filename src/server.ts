@@ -465,14 +465,18 @@ ${extras}      </DataItems>
 </MTConnectDevices>
 `;
   };
-  app.get("/probe", async (_req, res) => {
+  // The SHDR output carries values already in the declared units, so an agent that reads it must not convert them again: a model written for
+  // that agent (GET /probe?shdr=1) leaves out the nativeUnits attributes (a cppagent that found nativeUnits="FAHRENHEIT" would convert a value
+  // that is already Celsius).
+  const forAgent = (xml: string, query: unknown): string => (query === "1" ? xml.replace(/ nativeUnits="[^"]*"/g, "") : xml);
+  app.get("/probe", async (req, res) => {
     if (devicePerRobot) await refresh();
-    res.type("application/xml").send(probeXml());
+    res.type("application/xml").send(forAgent(probeXml(), req.query.shdr));
   });
   // The standard also addresses one device: /<device>/probe (the schema wants the Agent in every Devices document, so it stays in it).
   app.get("/:device/probe", async (req, res) => {
     if ((await deviceOfRoute(req, res)) === null) return;
-    res.type("application/xml").send(probeXml());
+    res.type("application/xml").send(forAgent(probeXml(), req.query.shdr));
   });
 
   // GET /current - the latest observation of every DataItem declared in /probe.
