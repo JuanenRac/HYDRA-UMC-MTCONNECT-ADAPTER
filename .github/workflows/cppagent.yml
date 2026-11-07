@@ -61,8 +61,9 @@ jobs:
             }
           }
           CFG
+          chmod -R a+rwX agentcfg  # the agent runs as another user and writes its log next to the configuration
           docker run -d --name cppagent --network host -v "$PWD/agentcfg:/mtconnect/config" mtconnect/agent /usr/bin/mtcagent run /mtconnect/config/agent.cfg
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:5000/probe -o /dev/null && break; sleep 1; done
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:5000/probe -o /dev/null && break; sleep 1; done
           docker logs cppagent | tail -20
       - name: Compare what the agent serves with what the adapter serves
         run: python tools/cppagent_check.py http://127.0.0.1:7700 http://127.0.0.1:5000 --wait 30
