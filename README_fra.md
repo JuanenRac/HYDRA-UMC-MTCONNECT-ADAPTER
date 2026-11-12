@@ -92,6 +92,8 @@ Il fournit une interface XML/HTTP en lecture seule qui permet aux logiciels indu
 
 **HYDRA-UMC-MTCONNECT-ADAPTER** présente les robots aux logiciels de supervision d'usine comme des appareils MTConnect : du XML en lecture seule sur HTTP (`/probe`, `/current`, `/sample`), alimenté depuis `HYDRA-UMC-SERVER`. Il n'envoie aucune commande à aucune machine.
 
+> **Plateforme :** là où ce README dit CM5, il s'agit du banc pilote qui fonctionne aujourd'hui ; la plateforme visée par HYDRA-UMC est un NVIDIA Jetson Orin NX 16 Go, une conception ni construite ni testée.
+
 ## 🏛️ Architecture
 
 <p align="center">

@@ -95,6 +95,8 @@ GPL-3.0-or-later - see LICENSE
 
 **HYDRA-UMC-MTCONNECT-ADAPTER** 把机器人以 MTConnect 设备的形式呈现给工厂监控软件：通过 HTTP 提供只读 XML（`/probe`、`/current`、`/sample`），数据来自 `HYDRA-UMC-SERVER`。它不会向任何机器发送命令。
 
+> **平台：** 本 README 中的 CM5 指的是目前正在运行的试验台；HYDRA-UMC 的目标平台是 NVIDIA Jetson Orin NX 16 GB，这是尚未制造或测试的设计。
+
 ## 🏛️ 架构
 
 <p align="center">

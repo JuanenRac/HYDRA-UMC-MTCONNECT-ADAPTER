@@ -92,6 +92,8 @@ Er bietet eine schreibgeschützte XML/HTTP-Schnittstelle, die es herkömmlicher 
 
 **HYDRA-UMC-MTCONNECT-ADAPTER** zeigt die Roboter der Fabrik-Überwachungssoftware als MTConnect-Geräte: XML nur lesend über HTTP (`/probe`, `/current`, `/sample`), gespeist aus `HYDRA-UMC-SERVER`. Er sendet keinen Befehl an eine Maschine.
 
+> **Plattform:** Wo dieses README CM5 sagt, ist der Pilotprüfstand gemeint, der heute läuft; die Zielplattform von HYDRA-UMC ist ein NVIDIA Jetson Orin NX 16 GB, ein Entwurf, der weder gebaut noch getestet wurde.
+
 ## 🏛️ Architektur
 
 <p align="center">

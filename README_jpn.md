@@ -96,6 +96,8 @@ GPL-3.0-or-later - see LICENSE
 
 **HYDRA-UMC-MTCONNECT-ADAPTER** は、工場の監視ソフトウェアに対してロボットを MTConnect デバイスとして見せます。`HYDRA-UMC-SERVER` から取得した状態を、読み取り専用の XML over HTTP（`/probe`、`/current`、`/sample`）で提供します。どの機械にもコマンドを送りません。
 
+> **プラットフォーム：** この README の「CM5」は、現在動作している試験用ベンチを指します。HYDRA-UMC の目標プラットフォームは NVIDIA Jetson Orin NX 16 GB ですが、これは製作も試験もされていない設計です。
+
 ## 🏛️ アーキテクチャ
 
 <p align="center">

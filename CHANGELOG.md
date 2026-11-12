@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **README: the platform statement:** a note says that where the README speaks of the CM5 it means the pilot bench that runs today, and that the target platform of HYDRA-UMC, an NVIDIA Jetson Orin NX 16 GB, is a design that has not been built or tested.
 - **A real cppagent against the SHDR output, and the bug it found:** the manual workflow "cppagent" starts the adapter with its demonstration data and a real cppagent in a container that reads the SHDR output, and `tools/cppagent_check.py` compares what the agent serves with what the adapter serves (the DataItems declared and every value). The first run showed that an agent given the model of `GET /probe` converted the temperature a second time (the SHDR value was already Celsius while the model said `nativeUnits="FAHRENHEIT"`). `GET /probe?shdr=1` now serves the model without `nativeUnits` for an agent that reads SHDR (5 more tests, schema-valid), and the check passes with it. Tried with demonstration data only, not with a machine.
 - **Dependencies updated:** the npm dependencies move to their latest compatible releases (express 5.3, supertest 7.3, tsx 4.23 and the Node and supertest type definitions).
 
