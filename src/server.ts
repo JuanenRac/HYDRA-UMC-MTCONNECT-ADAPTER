@@ -31,6 +31,7 @@ import { markStale, sourceUnavailableReading, toDataItemReading, type DataItemRe
 import { CachedReader, type MachineReader } from "./reader.js";
 import { HydraServerMachineReader } from "./hydraServerReader.js";
 import { parseShdrSource, ShdrMachineReader } from "./shdrReader.js";
+import { MqttMachineReader, mqttReaderOptionsFromEnv } from "./mqttMachineReader.js";
 import { CNC_FEEDABLE, CNC_ITEMS } from "./cncItems.js";
 import { ObservationBuffer, type Observation } from "./buffer.js";
 import { element, escapeXml } from "./xml.js";
@@ -133,6 +134,9 @@ function buildReader(perRobot = false): MachineReader {
     if (!parsed) throw new Error(`HYDRA-UMC-MTCONNECT-ADAPTER: HYDRA_UMC_MTCONNECT_SHDR_SOURCE must be host:port or a port, got ${shdrSource}`);
     return new ShdrMachineReader({ ...parsed, ...((process.env.HYDRA_UMC_MTCONNECT_CNC_ITEMS ?? "").trim() === "1" ? { feedable: CNC_FEEDABLE } : {}) });
   }
+  // the execution state that a bridge publishes on the MQTT broker, only when asked for and with no other source
+  const mqttOptions = !serverUrl ? mqttReaderOptionsFromEnv(process.env, parseShdrSource) : null;
+  if (mqttOptions) return new MqttMachineReader(mqttOptions);
   if (!serverUrl) return isDemo() ? new FixtureMachineReader() : new UnconfiguredMachineReader();
   const robotIdRaw = process.env.HYDRA_UMC_ROBOT_ID;
   const robotId = robotIdRaw ? Number(robotIdRaw) : undefined;
@@ -643,6 +647,8 @@ function main() {
     ? `live HYDRA-UMC-SERVER at ${process.env.HYDRA_UMC_SERVER_URL}`
     : shdrSource
       ? `SHDR stream at ${shdrSource}`
+      : (process.env.HYDRA_UMC_MTCONNECT_MQTT_SOURCE ?? "").trim()
+      ? `MQTT broker at ${process.env.HYDRA_UMC_MTCONNECT_MQTT_SOURCE?.trim()}`
       : isDemo()
       ? "FixtureMachineReader - DEMONSTRATION DATA (HYDRA_UMC_MTCONNECT_DEMO=1)"
       : "none configured: every DataItem is UNAVAILABLE (set HYDRA_UMC_SERVER_URL for real robot data)";
