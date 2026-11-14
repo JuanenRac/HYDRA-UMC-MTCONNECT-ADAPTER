@@ -122,7 +122,7 @@ describe("a machine that behaves", () => {
 
   it("answers the heartbeat of the source and reads CRLF line ends", async () => {
     const { sim, port } = await machine();
-    sim.onConnect = (socket) => socket.write("* PING\r\n" + line("execution", "ACTIVE").replace("\n", "\r\n"));
+    sim.onConnect = (socket) => socket.write("* PING\r\n" + line("execution", "ACTIVE").replace(/\n/g, "\r\n"));
     const r = reader(port);
     await waitFor(async () => (await r.read().catch(() => [])).length === 1, "the value");
     await waitFor(() => sim.received.join("").includes("* PONG 60000"), "the pong");
