@@ -24,26 +24,7 @@
 
 import type { RawReading } from "./dataitem.js";
 import type { MachineReader } from "./reader.js";
-
-interface HydraPlaybackState {
-  isPlaying?: boolean;
-  isPaused?: boolean;
-  isFinished?: boolean;
-}
-
-interface HydraRobot {
-  id: number;
-  online?: boolean;
-  playbackState?: HydraPlaybackState;
-}
-
-interface HydraController {
-  robots?: HydraRobot[];
-}
-
-interface HydraSettingsResponse {
-  controllers?: HydraController[];
-}
+import { rosterFromSettings, type RosterPlayback, type RosterRobot } from "./robotRoster.js";
 
 export interface HydraServerMachineReaderOptions {
   /** Base URL of a real HYDRA-UMC-SERVER instance, e.g. "http://localhost:3000". */
@@ -220,7 +201,7 @@ export class HydraServerMachineReader implements MachineReader {
     if (!response.ok) {
       throw new Error(`HYDRA-UMC-SERVER replied with HTTP ${response.status}`);
     }
-    const body = (await readJsonCapped(response)) as HydraSettingsResponse;
+    const body: unknown = await readJsonCapped(response);
     if (this.perRobot) {
       const robots = findRobots(body, this.robotId);
       if (robots.length === 0 && this.robotId !== undefined) {
@@ -228,8 +209,8 @@ export class HydraServerMachineReader implements MachineReader {
       }
       const at = Date.now();
       return robots.flatMap((r) => [
-        { id: `robot_${r.id}_avail`, category: "EVENT" as const, type: "AVAILABILITY", value: r.online ? "AVAILABLE" : "UNAVAILABLE", timestampMs: at, deviceKey: String(r.id) },
-        { id: `robot_${r.id}_execution`, category: "EVENT" as const, type: "EXECUTION", value: r.online ? deriveExecution(r.playbackState) : "UNAVAILABLE", timestampMs: at, deviceKey: String(r.id) },
+        { id: `robot_${r.robot_id}_avail`, category: "EVENT" as const, type: "AVAILABILITY", value: r.online ? "AVAILABLE" : "UNAVAILABLE", timestampMs: at, deviceKey: String(r.robot_id) },
+        { id: `robot_${r.robot_id}_execution`, category: "EVENT" as const, type: "EXECUTION", value: r.online ? deriveExecution(r.playback) : "UNAVAILABLE", timestampMs: at, deviceKey: String(r.robot_id) },
       ]);
     }
     const robot = findRobot(body, this.robotId);
@@ -245,36 +226,36 @@ export class HydraServerMachineReader implements MachineReader {
     // `online` is the flag HYDRA-UMC-SERVER keeps for the robot (the one the operator interface toggles); a robot that is not available cannot be executing anything.
     return [
       { id: "avail", category: "EVENT", type: "AVAILABILITY", value: robot.online ? "AVAILABLE" : "UNAVAILABLE", timestampMs },
-      { id: "execution", category: "EVENT", type: "EXECUTION", value: robot.online ? deriveExecution(robot.playbackState) : "UNAVAILABLE", timestampMs },
+      { id: "execution", category: "EVENT", type: "EXECUTION", value: robot.online ? deriveExecution(robot.playback) : "UNAVAILABLE", timestampMs },
       { id: "spindle_temp", category: "SAMPLE", type: "TEMPERATURE", value: null, timestampMs },
     ];
   }
 }
 
-function findRobots(body: HydraSettingsResponse, robotId: number | undefined): HydraRobot[] {
-  const allRobots = (body.controllers ?? []).flatMap((controller) => controller.robots ?? []);
-  return robotId !== undefined ? allRobots.filter((robot) => robot.id === robotId) : allRobots;
+function findRobots(body: unknown, robotId: number | undefined): RosterRobot[] {
+  const allRobots = rosterFromSettings(body).robots;
+  return robotId !== undefined ? allRobots.filter((robot) => robot.robot_id === robotId) : allRobots;
 }
 
-function findRobot(body: HydraSettingsResponse, robotId: number | undefined): HydraRobot | undefined {
-  const allRobots = (body.controllers ?? []).flatMap((controller) => controller.robots ?? []);
+function findRobot(body: unknown, robotId: number | undefined): RosterRobot | undefined {
+  const allRobots = rosterFromSettings(body).robots;
   if (robotId !== undefined) {
-    return allRobots.find((robot) => robot.id === robotId);
+    return allRobots.find((robot) => robot.robot_id === robotId);
   }
   return allRobots[0];
 }
 
 // Real, standard MTConnect Execution enumerated values (ANSI/MTC1.4 Part
-// 3), mapped from the same playbackState fields HYDRA-UMC-SERVER's own
-// POST /api/robot/:id/command play/pause/stop cases (src/server.ts) set:
-//   - isPlaying && isPaused   -> INTERRUPTED (a real program paused mid-cycle)
-//   - isPlaying (not paused)  -> ACTIVE (real, ongoing execution)
-//   - isFinished (not playing) -> STOPPED (a real program ran to completion)
-//   - anything else (never run, or reset) -> READY
-function deriveExecution(state: HydraPlaybackState | undefined): string {
-  if (!state) return "READY";
-  if (state.isPlaying && state.isPaused) return "INTERRUPTED";
-  if (state.isPlaying) return "ACTIVE";
-  if (state.isFinished) return "STOPPED";
+// 3), mapped from the playback state of the shared robot roster (the SDK's
+// RobotRoster contract, built from the same playbackState fields
+// HYDRA-UMC-SERVER's own POST /api/robot/:id/command play/pause/stop set):
+//   - paused   -> INTERRUPTED (a real program paused mid-cycle)
+//   - playing  -> ACTIVE (real, ongoing execution)
+//   - finished -> STOPPED (a real program ran to completion)
+//   - idle     -> READY (never run, or reset)
+function deriveExecution(playback: RosterPlayback): string {
+  if (playback === "paused") return "INTERRUPTED";
+  if (playback === "playing") return "ACTIVE";
+  if (playback === "finished") return "STOPPED";
   return "READY";
 }
