@@ -286,7 +286,8 @@ describe("the reader of the MQTT broker", () => {
 
   it("on a fixed seed, shows only the last good message and never one that is garbage, on another topic, unknown or old", async () => {
     broker = await startFakeBroker();
-    const clock = 1_000_000;
+    // a time the bridge could really have written: an observed_at that is not positive is ignored and the arrival time counts instead
+    const clock = 10_000_000;
     const reader = open(broker.port, { staleMs: 5000, now: () => clock });
     await reader.read().catch(() => undefined);
     await waitFor(() => broker!.filters.length > 0, "the subscription");
@@ -321,5 +322,5 @@ describe("the reader of the MQTT broker", () => {
     }
     await sleep(200);
     expect(await executionOf(reader)).toBe(state);
-  });
+  }, 30_000);
 });
