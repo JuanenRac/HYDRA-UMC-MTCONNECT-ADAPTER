@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+
+## [0.2.4]
+
 - **Comments describe what the code does, not what it used to do:** the notes in the source and the tests say the present behaviour and the reason for it. Comments only: no behaviour changes.
 - **The robots are read with the robot roster of the shared SDK:** the reader of HYDRA-UMC-SERVER no longer walks `controllers[].robots[]` with its own reading of a missing field; it uses the walk of the SDK's `RobotRoster` contract (`src/robotRoster.ts`, the SDK file unchanged, with a test that compares it with the SDK when it is at hand). A robot whose id is not a whole number is skipped, and the execution state follows the playback of the roster: paused is INTERRUPTED, playing is ACTIVE, finished is STOPPED, anything else READY.
 - **The SDK pin and the shared tools are up to date:** the SDK dependency names the newest release tag, and the shared tools are the canonical copies again.
@@ -12,6 +15,8 @@ All notable changes to this project are documented here.
 - **README: the platform statement:** a note says that where the README speaks of the CM5 it means the pilot bench that runs today, and that the target platform of HYDRA-UMC, an NVIDIA Jetson Orin NX 16 GB, is a design that has not been built or tested.
 - **A real cppagent against the SHDR output, and the bug it found:** the manual workflow "cppagent" starts the adapter with its demonstration data and a real cppagent in a container that reads the SHDR output, and `tools/cppagent_check.py` compares what the agent serves with what the adapter serves (the DataItems declared and every value). The first run showed that an agent given the model of `GET /probe` converted the temperature a second time (the SHDR value was already Celsius while the model said `nativeUnits="FAHRENHEIT"`). `GET /probe?shdr=1` now serves the model without `nativeUnits` for an agent that reads SHDR (5 more tests, schema-valid), and the check passes with it. Tried with demonstration data only, not with a machine.
 - **Dependencies updated:** the npm dependencies move to their latest compatible releases (express 5.3, supertest 7.3, tsx 4.23 and the Node and supertest type definitions).
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
 
 ## [0.2.3] - The conditions can come from the faults HYDRA-UMC-SERVER keeps (off by default): HYDRAUMCMTCONNECTSERVERFAULTS=1 reads GET /api/faults?active=1 with the identity the adapter already uses for the roster and feeds mcucondition... (and 1 more changes)
 
