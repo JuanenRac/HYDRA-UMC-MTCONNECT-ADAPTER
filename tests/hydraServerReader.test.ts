@@ -142,9 +142,9 @@ describe("HydraServerMachineReader - real HTTP against a real /api/settings shap
   });
 
   it("times out instead of hanging forever against a real server that accepts the connection but never responds", async () => {
-    // Real regression: read() used to call fetch() with no timeout/signal
-    // at all - a HYDRA-UMC-SERVER that accepted the TCP connection but
-    // never wrote a response left this adapter's own poll loop stuck
+    // Regression: read() must call fetch() with a timeout/signal -
+    // a HYDRA-UMC-SERVER that accepts the TCP connection but
+    // never writes a response would leave this adapter's own poll loop stuck
     // waiting indefinitely on one read().
     server = createServer(() => {
       // Deliberately never calls res.end()/res.writeHead().
