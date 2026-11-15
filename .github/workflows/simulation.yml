@@ -3,7 +3,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 #
-# Runs the real SHDR reader and the real SHDR server against a simulated machine that speaks SHDR (a TCP feed with a seeded cycle of states) and misbehaves on command. No hardware. See docs/SIMULATION.md.
+# Runs the real SHDR reader and the real SHDR server against a simulated machine that speaks SHDR (a TCP feed with a seeded cycle of states) and misbehaves on command, and the readers of HYDRA-UMC-SERVER and of the MQTT broker against a server and a broker that fail. No hardware. See docs/SIMULATION.md.
 # It runs on every push and pull request, by hand, and once a week.
 # =============================================================================
 name: Simulation bench
@@ -38,4 +38,4 @@ jobs:
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
           npm ci
-          npx vitest run tests/simulation-bench.test.ts
+          npx vitest run tests/simulation-bench.test.ts tests/simulation-bench-sources.test.ts
