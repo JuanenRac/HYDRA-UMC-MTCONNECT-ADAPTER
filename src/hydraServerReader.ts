@@ -50,11 +50,11 @@ export interface HydraServerMachineReaderOptions {
    * since Node 18, already this repo's own minimum). */
   fetchImpl?: typeof fetch;
   /** How long read() waits for HYDRA-UMC-SERVER's own GET /api/settings
-   * before giving up - real fix: this call used to have no timeout at
-   * all, so a hung/unreachable-but-connected HYDRA-UMC-SERVER left this
-   * adapter's own poll loop (reader.ts's CachedReader) stuck waiting
-   * indefinitely on one read(), instead of surfacing a real
-   * SourceUnavailableError a caller can act on. Defaults to 5 seconds. */
+   * before giving up - without a timeout, a hung/unreachable-but-connected
+   * HYDRA-UMC-SERVER would leave this adapter's own poll loop (reader.ts's
+   * CachedReader) stuck waiting indefinitely on one read(), instead of
+   * surfacing a real SourceUnavailableError a caller can act on.
+   * Defaults to 5 seconds. */
   requestTimeoutMs?: number;
 }
 
