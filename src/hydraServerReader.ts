@@ -56,6 +56,24 @@ export interface HydraServerMachineReaderOptions {
    * surfacing a real SourceUnavailableError a caller can act on.
    * Defaults to 5 seconds. */
   requestTimeoutMs?: number;
+  /** Refuse to start when a credential would travel over plain http to another machine. Default: HYDRA_UMC_MTCONNECT_REQUIRE_TLS_FOR_LOGIN=1; off: only a warning. */
+  requireTlsForLogin?: boolean;
+}
+
+/** Whether a URL host is this machine (localhost, 127.0.0.0/8 or ::1). */
+export function isLoopbackHost(host: string): boolean {
+  const name = host.toLowerCase().replace(/^\[|\]$/g, "");
+  return name === "localhost" || name === "::1" || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(name);
+}
+
+/** True when `baseUrl` is plain http to another machine, where a password or a token can be read on the way. */
+export function sendsCredentialInClear(baseUrl: string): boolean {
+  try {
+    const url = new URL(baseUrl);
+    return url.protocol === "http:" && !isLoopbackHost(url.hostname);
+  } catch {
+    return false;
+  }
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 5000;
@@ -117,6 +135,12 @@ export class HydraServerMachineReader implements MachineReader {
     this.perRobot = options.perRobot ?? false;
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+    const hasCredential = this.token !== undefined || (this.username !== undefined && this.password !== undefined);
+    if (hasCredential && sendsCredentialInClear(this.baseUrl)) {
+      const problem = "HYDRA-UMC-MTCONNECT-ADAPTER: the SERVER credential would travel over plain http to another machine; use https";
+      if (options.requireTlsForLogin ?? (process.env.HYDRA_UMC_MTCONNECT_REQUIRE_TLS_FOR_LOGIN ?? "").trim() === "1") throw new Error(problem);
+      console.warn(`${problem} (HYDRA_UMC_MTCONNECT_REQUIRE_TLS_FOR_LOGIN=1 refuses to start instead)`);
+    }
   }
 
   /** Fetches with a bounded wait; an abort becomes the "did not respond" error. */

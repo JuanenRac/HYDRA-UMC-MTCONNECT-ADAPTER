@@ -11,9 +11,9 @@
 // finding that this repo's only MachineReader was ever the fixture one.
 // =============================================================================
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createServer, type Server } from "node:http";
-import { HydraServerMachineReader } from "../src/hydraServerReader.js";
+import { HydraServerMachineReader, isLoopbackHost } from "../src/hydraServerReader.js";
 
 let server: Server | undefined;
 
@@ -262,5 +262,35 @@ describe("HydraServerMachineReader - the credential HYDRA-UMC-SERVER requires", 
       server!.listen(0, "127.0.0.1", () => resolve((server!.address() as any).port));
     });
     await expect(new HydraServerMachineReader({ baseUrl: `http://127.0.0.1:${port}` }).read()).rejects.toThrow(/larger than/);
+  });
+});
+
+describe("a credential and plain http", () => {
+  const account = { username: "adapter", password: "pw-for-the-test" };
+
+  it("is only a warning by default, and refused when TLS is required", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      expect(() => new HydraServerMachineReader({ baseUrl: "http://cell.example.test:3000", ...account, requireTlsForLogin: false })).not.toThrow();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("plain http"));
+      expect(() => new HydraServerMachineReader({ baseUrl: "http://cell.example.test:3000", ...account, requireTlsForLogin: true })).toThrow(/plain http/);
+      expect(() => new HydraServerMachineReader({ baseUrl: "http://cell.example.test:3000", token: "t-1", requireTlsForLogin: true })).toThrow(/plain http/);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("says nothing over https, to this machine, or without a credential", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      for (const baseUrl of ["https://cell.example.test", "http://localhost:3000", "http://127.0.0.1:3000", "http://[::1]:3000"]) {
+        new HydraServerMachineReader({ baseUrl, ...account, requireTlsForLogin: true });
+      }
+      new HydraServerMachineReader({ baseUrl: "http://cell.example.test", requireTlsForLogin: true });
+      expect(warn).not.toHaveBeenCalled();
+      expect(isLoopbackHost("127.cell.example.test")).toBe(false);
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
