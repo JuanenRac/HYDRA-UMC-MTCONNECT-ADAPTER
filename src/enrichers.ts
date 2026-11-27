@@ -191,6 +191,7 @@ export function enrichersFromEnv(env: NodeJS.ProcessEnv = process.env): Enricher
           token: env.HYDRA_UMC_SERVER_TOKEN,
           username: env.HYDRA_UMC_SERVER_USER,
           password: env.HYDRA_UMC_SERVER_PASSWORD,
+          requireTlsForLogin: (env.HYDRA_UMC_MTCONNECT_REQUIRE_TLS_FOR_LOGIN ?? "").trim() === "1",
         }),
       ),
     );

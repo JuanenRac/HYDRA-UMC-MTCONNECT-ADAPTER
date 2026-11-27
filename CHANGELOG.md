@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A SERVER credential over plain http is no longer silent:** the adapter warns when its account or token would travel over `http://` to another machine, and with `HYDRA_UMC_MTCONNECT_REQUIRE_TLS_FOR_LOGIN=1` (off by default) it refuses to start.
 - **Simulation bench of the two other machine sources:** `tests/simulation-bench-sources.test.ts` (16 tests, fixed seed) runs the reader of HYDRA-UMC-SERVER against a host twin of `GET /api/settings` that is off, answers 500 or 503, sends a page that is not JSON, a JSON cut in the middle, an empty roster or nothing, forgets the session or loses the robot, and the reader of the MQTT broker against a broker that refuses and drops its clients and a bridge that publishes garbage, another topic, an unknown execution or an old value. A read either shows what the source said or fails, and the readers recover by themselves. The workflow `simulation.yml` runs it, `docs/SIMULATION.md` lists the scenarios and the physical tests that are still pending, and the evidence of the manifest is now `simulator`.
 
 
